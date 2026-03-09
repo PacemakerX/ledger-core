@@ -1,0 +1,61 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/bin/
+/tmp/
+
+# Go build output
+*.o
+*.a
+*.test
+*.out
+go.sum
+
+# Environment variables — never commit secrets
+.env
+.env.local
+.env.*.local
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+coverage.out
+coverage.html
+
+# Profiling
+*.prof
+*.pprof
+
+# Database dumps
+*.sql.gz
+*.dump
+
+# k6 results
+k6-results/
+load-test-results/
+
+# Grafana data (local only)
+grafana-data/
+
+# Prometheus data (local only)
+prometheus-data/
+
+# Air live reload (if used)
+tmp/
+.air.toml
