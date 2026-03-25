@@ -12,6 +12,7 @@ import (
 	"github.com/PacemakerX/ledger-core/config"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/PacemakerX/ledger-core/internal/db"
 	"go.uber.org/zap"
 )
 
@@ -23,6 +24,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "failed to load config: %v\n", err)
 		os.Exit(1)
 	}
+
+	
 
 	
 	//  Initialize Logger ──────────────────────────────────────
@@ -39,6 +42,15 @@ func main() {
 	defer logger.Sync()
 
 
+	pool, err := db.NewPool(context.Background(), &cfg.Database)
+	if err != nil {
+		logger.Fatal("failed to connect to database", zap.Error(err))
+	}
+	defer pool.Close()
+	logger.Info("database connected",
+		zap.String("host", cfg.Database.Host),
+		zap.String("db", cfg.Database.Name),
+	)
 
 	//  Setup Router ───────────────────────────────────────────
 	r := chi.NewRouter()
