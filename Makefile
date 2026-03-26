@@ -35,3 +35,6 @@ migrate-force:
 
 migrate-version:
 	migrate -path migrations -database "$(DB_URL)" version
+
+migrate-down-all:
+	migrate -path migrations -database "$(DB_URL)" down
