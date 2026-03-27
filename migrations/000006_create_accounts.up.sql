@@ -2,6 +2,8 @@
 
 BEGIN;
 
+CREATE SEQUENCE IF NOT EXISTS account_number_seq;
+
 CREATE TABLE IF NOT EXISTS accounts(
 
     id                      UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -14,7 +16,7 @@ CREATE TABLE IF NOT EXISTS accounts(
     daily_debit_limit       BIGINT          DEFAULT NULL,
     daily_credit_limit      BIGINT          DEFAULT NULL,
     created_at              TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    updated_at              TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+    updated_at              TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     
     CONSTRAINT uq_customer_account
         UNIQUE (customer_id, type_id, currency_id)

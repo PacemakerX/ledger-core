@@ -2,7 +2,7 @@
 
 BEGIN;
 
-DROP TABLE IF EXISTS accounts;
+DROP TABLE IF EXISTS accounts CASCADE;
 
 DROP SEQUENCE IF EXISTS account_number_seq;
 

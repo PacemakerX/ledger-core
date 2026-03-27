@@ -2,6 +2,6 @@
 
 BEGIN;
 
-DROP TABLE IF EXISTS currencies;
+DROP TABLE IF EXISTS currencies CASCADE; 
 
 COMMIT;

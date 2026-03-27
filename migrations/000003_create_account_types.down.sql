@@ -2,6 +2,6 @@
 
 BEGIN;
 
-DROP TABLE  IF EXISTS account_types;
+DROP TABLE  IF EXISTS account_types CASCADE;
 
 COMMIT;
