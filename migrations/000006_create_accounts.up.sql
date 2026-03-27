@@ -1,3 +1,5 @@
+-- migrations/000006_create_accounts.up.sql
+
 BEGIN;
 
 CREATE TABLE IF NOT EXISTS accounts(

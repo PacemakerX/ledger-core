@@ -1,3 +1,5 @@
+-- migrations/000001_create_currencies.up.sql
+
 BEGIN;
 
 CREATE TABLE IF NOT EXISTS currencies (
