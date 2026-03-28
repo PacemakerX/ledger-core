@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS customers (
     country_id      INTEGER         NOT NULL REFERENCES countries(id),
     phone_number    VARCHAR(15)     NOT NULL,
     email           VARCHAR(255)    UNIQUE NOT NULL,
-    verified        BOOLEAN         NOT NULL DEFAULT false,
     kyc_status      VARCHAR(20)     NOT NULL DEFAULT 'unverified',
     is_active       BOOLEAN NOT     NULL DEFAULT true,
     created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
