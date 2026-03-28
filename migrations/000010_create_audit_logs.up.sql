@@ -8,10 +8,14 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     entity_id       UUID              NOT NULL,
     action          VARCHAR(50)       NOT NULL,
     actor_id        UUID              NOT NULL,
+    actor_type      VARCHAR(20)       NOT NULL DEFAULT 'system',
     old_value       JSONB,
     new_value       JSONB,
     ip_address      VARCHAR(45),
     created_at      TIMESTAMPTZ      NOT NULL DEFAULT NOW()
+
+    CONSTRAINT chk_actor_type 
+        CHECK (actor_type IN ('customer','admin','system'))
 );
 
 -- Fast Lookup: All audit logs for a specific entity id 
