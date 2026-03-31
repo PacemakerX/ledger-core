@@ -24,10 +24,10 @@ CREATE TABLE IF NOT EXISTS account_limits(
 
 -- Fast Lookup: All recorcds for a specific limit account id
 CREATE INDEX IF NOT EXISTS idx_accounts_limit_accounts_id
-    ON accounts_limits(account_id);
+    ON account_limits(account_id);
 
 -- Fast Lookup: All recorcds for a specific limit reset time 
 CREATE INDEX IF NOT EXISTS idx_accounts_limit_reset_at
-    ON accounts_limits(reset_at);
+    ON account_limits(reset_at);
 
 COMMIT;
