@@ -75,3 +75,21 @@ func (r *journalEntryRepository) VerifyBalance(ctx context.Context, tx repositor
 
 	return balance, nil
 }
+
+func (r * journalEntryRepository) GetBalance(ctx context.Context,accountID uuid.UUID) (int64,error){
+
+	query:=`SELECT COALESCE(
+		SUM(CASE WHEN entry_type = 'DEBIT' THEN amount ELSE -amount END)
+	, 0)
+	FROM journal_entries
+	WHERE account_id = $1`
+
+	var balance int64
+	err:=r.pool.QueryRow(ctx,query,accountID).Scan(&balance)
+
+	if err!=nil{
+		return 0,fmt.Errorf("journalEntryRepository.GetBalance: %w",err)
+	}
+
+	return balance,nil
+}

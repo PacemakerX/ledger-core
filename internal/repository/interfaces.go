@@ -79,6 +79,8 @@ type JournalEntryRepository interface {
 	// transaction. Called after CreateBatch and before Commit as a safeguard.
 	// Returns the net sum — caller must assert it equals zero.
 	VerifyBalance(ctx context.Context, tx Tx, transactionID uuid.UUID) (int64, error)
+
+	GetBalance(ctx context.Context, accountID uuid.UUID) (int64, error)
 }
 
 // IdempotencyRepository defines operations on the idempotency_keys table.
