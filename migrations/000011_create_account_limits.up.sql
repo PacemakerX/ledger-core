@@ -2,7 +2,7 @@
 
 BEGIN;
 
-CREATE TABLE IF NOT EXISTS accounts_limits( 
+CREATE TABLE IF NOT EXISTS account_limits( 
    id                UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
    account_id        UUID            NOT NULL REFERENCES accounts(id),
    limit_type        VARCHAR(20)     NOT NULL,
