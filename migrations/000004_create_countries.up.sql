@@ -12,4 +12,13 @@ CREATE TABLE IF NOT EXISTS countries(
     created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
 
+INSERT INTO countries (id, name, iso_code, dial_code, currency_id)
+VALUES (
+    1,
+    'India',
+    'IN',
+    '+91',
+    (SELECT id FROM currencies WHERE code = 'INR')
+);
+
 COMMIT;
