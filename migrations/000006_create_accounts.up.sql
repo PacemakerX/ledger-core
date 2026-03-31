@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS accounts(
 
     id                      UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
     account_number          VARCHAR(20)     UNIQUE NOT NULL DEFAULT 'ACC-' || LPAD(nextval('account_number_seq')::text, 6, '0'),
-    customer_id             UUID            NOT NULL REFERENCES customers(id),
+    customer_id             UUID            REFERENCES customers(id),
     currency_id             INTEGER         NOT NULL REFERENCES currencies(id),
     type_id                 INTEGER         NOT NULL REFERENCES account_types(id),
     country_id              INTEGER         NOT NULL REFERENCES countries(id),

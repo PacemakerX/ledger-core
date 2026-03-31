@@ -6,13 +6,17 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	App      AppConfig
-	Database DatabaseConfig
-	Log      LogConfig
+	App                      AppConfig
+	Database                 DatabaseConfig
+	Log                      LogConfig
+	PlatformFloatAccountID   uuid.UUID
+	PlatformCashAccountID    uuid.UUID
+	PlatformRevenueAccountID uuid.UUID
 }
 
 type AppConfig struct {
@@ -60,6 +64,20 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("invalid DB_CONN_TIMEOUT: %w", err)
 	}
 
+	platformFloatAccountID, err := uuid.Parse(getEnv("PLATFORM_FLOAT_ACCOUNT_ID", ""))
+	if err != nil {
+		return nil, fmt.Errorf("invalid PLATFORM_FLOAT_ACCOUNT_ID: %w", err)
+	}
+
+	platformCashAccountID, err := uuid.Parse(getEnv("PLATFORM_CASH_ACCOUNT_ID", ""))
+	if err != nil {
+		return nil, fmt.Errorf("invalid PLATFORM_CASH_ACCOUNT_ID: %w", err)
+	}
+
+	platformRevenueAccountID, err := uuid.Parse(getEnv("PLATFORM_REVENUE_ACCOUNT_ID", ""))
+	if err != nil {
+		return nil, fmt.Errorf("invalid PLATFORM_REVENUE_ACCOUNT_ID: %w", err)
+	}
 	return &Config{
 		App: AppConfig{
 			Env:  getEnv("APP_ENV", "development"),
@@ -79,6 +97,9 @@ func Load() (*Config, error) {
 		Log: LogConfig{
 			Level: getEnv("LOG_LEVEL", "debug"),
 		},
+		PlatformFloatAccountID:   platformFloatAccountID,
+		PlatformCashAccountID:    platformCashAccountID,
+		PlatformRevenueAccountID: platformRevenueAccountID,
 	}, nil
 }
 
