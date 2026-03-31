@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS account_limits(
    updated_at        TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 
    CONSTRAINT chk_limit_type 
-        CHECK ( limit_type IN ('DAILY','MONTHLY','YEARLY')),
+       CHECK ( limit_type IN ('DAILY','MONTHLY','YEARLY','TRANSACTION'))
    CONSTRAINT chk_max_amount
         CHECK ( max_amount > 0),
    CONSTRAINT chk_current_usage

@@ -32,6 +32,10 @@ var (
 	// Maps to HTTP 422.
 	ErrMonthlyLimitExceeded = errors.New("monthly limit exceeded")
 
+		// ErrMonthlyLimitExceeded is returned when a transfer would breach
+	// the account's monthly debit limit.
+	// Maps to HTTP 422.
+	ErrYearlyLimitExceeded = errors.New("yearly limit exceeded")
 	// ErrTransactionLimitExceeded is returned when a single transfer
 	// amount exceeds the per-transaction limit on the account.
 	// Maps to HTTP 422.
