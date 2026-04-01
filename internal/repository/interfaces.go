@@ -92,7 +92,7 @@ type IdempotencyRepository interface {
 
 	// Create inserts a new idempotency key at the start of a transfer,
 	// before the db transaction begins. Acts as a reservation.
-	Create(ctx context.Context, idempotencyKey *models.IdempotencyKey) error
+	Create(ctx context.Context,tx Tx, idempotencyKey *models.IdempotencyKey) error
 
 	// SetResponse stores the final response body and status on the key
 	// after the transfer completes. Must be called inside the db transaction
