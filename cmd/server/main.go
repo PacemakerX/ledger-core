@@ -12,10 +12,12 @@ import (
 	"github.com/PacemakerX/ledger-core/config"
 	"github.com/PacemakerX/ledger-core/internal/db"
 	"github.com/PacemakerX/ledger-core/internal/handler"
+	"github.com/PacemakerX/ledger-core/internal/middleware"
 	"github.com/PacemakerX/ledger-core/internal/repository/postgres"
 	"github.com/PacemakerX/ledger-core/internal/service"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 )
 
@@ -78,13 +80,14 @@ func main() {
 	r := chi.NewRouter()
 
 	// Core middleware
-	r.Use(middleware.RequestID)                 // Adds X-Request-Id to every request
-	r.Use(middleware.RealIP)                    // Uses X-Forwarded-For header
-	r.Use(middleware.Recoverer)                 // Recovers from panics gracefully
-	r.Use(middleware.Timeout(60 * time.Second)) // Request timeout
-
+	r.Use(chimiddleware.RequestID)                 // Adds X-Request-Id to every request
+	r.Use(chimiddleware.RealIP)                    // Uses X-Forwarded-For header
+	r.Use(chimiddleware.Recoverer)                 // Recovers from panics gracefully
+	r.Use(chimiddleware.Timeout(60 * time.Second)) // Request timeout
+	r.Use(middleware.MetricsMiddleware)
 	//  Routes ─────────────────────────────────────────────────
 	r.Get("/health", healthCheck(logger))
+	r.Handle("/metrics", promhttp.Handler())
 
 	// API v1 group — all ledger routes will go here
 	r.Route("/api/v1", func(r chi.Router) {
@@ -142,7 +145,7 @@ type healthResponse struct {
 func healthCheck(logger *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("health check called",
-			zap.String("request_id", middleware.GetReqID(r.Context())),
+			zap.String("request_id", chimiddleware.GetReqID(r.Context())),
 		)
 
 		w.Header().Set("Content-Type", "application/json")
