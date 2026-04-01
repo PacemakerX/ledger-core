@@ -14,13 +14,13 @@ import (
 )
 
 type TransferRequest struct {
-	FromAccountID  uuid.UUID
-	ToAccountID    uuid.UUID
-	Amount         int64
-	Currency       string
-	IdempotencyKey string
-	InitiatedBy    uuid.UUID
-	Description    *string
+	FromAccountID  uuid.UUID `json:"from_account_id"`
+	ToAccountID    uuid.UUID `json:"to_account_id"`
+	Amount         int64     `json:"amount"`
+	Currency       string    `json:"currency"`
+	IdempotencyKey string    `json:"idempotency_key"`
+	InitiatedBy    uuid.UUID `json:"initiated_by"`
+	Description    *string   `json:"description"`
 }
 
 type TransferResponse struct {
@@ -252,6 +252,17 @@ func (s *transferService) Transfer(ctx context.Context, req TransferRequest) (*T
 	 * If we successfully commit, Rollback becomes a no-op.
 	 */
 	defer tx.Rollback(ctx)
+
+	err = s.idempotency.Create(ctx, tx, &models.IdempotencyKey{
+		Key:            req.IdempotencyKey,
+		RequestHash:    req.IdempotencyKey,
+		ResponseStatus: "PENDING",
+		ResponseBody:   "",
+		ExpiresAt:      time.Now().Add(24 * time.Hour),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("transfer: creating idempotency key: %w", err)
+	}
 
 	first, second := req.FromAccountID, req.ToAccountID
 
