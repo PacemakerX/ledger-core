@@ -16,14 +16,14 @@ type idempotencyRepository struct{
 	pool *pgxpool.Pool
 }
 
-func NewIdempotenctyRepository(pool *pgxpool.Pool) repository.IdempotencyRepository{
+func NewIdempotencyRepository(pool *pgxpool.Pool) repository.IdempotencyRepository{
 	return &idempotencyRepository{ pool: pool}
 }
 
 
 func (r *idempotencyRepository)  Get(ctx context.Context, key string) (*models.IdempotencyKey, error){
 
-	query:=`SELECT key, request_has, response_status,
+	query:=`SELECT key, request_hash, response_status,
 	response_body, expires_at, created_at
 	FROM idempotency_keys
 	WHERE key = $1`
