@@ -18,6 +18,7 @@ go.sum
 .env
 .env.local
 .env.*.local
+.env.docker
 
 # IDE and editor files
 .idea/
