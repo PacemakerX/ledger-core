@@ -32,16 +32,19 @@ Repositories can be swapped (MySQL, SQLite) without touching business logic.
 ├── config
 │   └── config.go
 ├── docs
-│   └── adr
-│       ├── 000-template.md
-│       ├── 001-why-go.md
-│       ├── 002-why-postgreSQL.md
-│       ├── 003-why-pgx.md
-│       ├── 004-why-chi.md
-│       ├── 005-why-zap.md
-│       ├── 006-why-uuid.md
-│       ├── 007-why-golang-migrate-over-gorm-automigrate.md
-│       └── 008-why-double-entry-accounting.md
+│   ├── adr
+│   │   ├── 000-template.md
+│   │   ├── 001-why-go.md
+│   │   ├── 002-why-postgreSQL.md
+│   │   ├── 003-why-pgx.md
+│   │   ├── 004-why-chi.md
+│   │   ├── 005-why-zap.md
+│   │   ├── 006-why-uuid.md
+│   │   ├── 007-why-golang-migrate-over-gorm-automigrate.md
+│   │   └── 008-why-double-entry-accounting.md
+│   └── images
+│       ├── grafana.jpg
+│       └── load_test.png
 ├── internal
 │   ├── db
 │   │   └── postgres.go
@@ -52,7 +55,7 @@ Repositories can be swapped (MySQL, SQLite) without touching business logic.
 │   ├── metrics
 │   │   └── metrics.go
 │   ├── middleware
-│   │   └── metrics.go
+│   │   └── metrics_middleware.go
 │   ├── models
 │   │   ├── account.go
 │   │   ├── account_limit.go
@@ -67,12 +70,12 @@ Repositories can be swapped (MySQL, SQLite) without touching business logic.
 │   │   └── transaction.go
 │   ├── repository
 │   │   ├── postgres
-│   │   │   ├── account.go
-│   │   │   ├── account_limit.go
-│   │   │   ├── customer.go
-│   │   │   ├── idempotency.go
-│   │   │   ├── journal_entry.go
-│   │   │   ├── transaction.go
+│   │   │   ├── account_limit_repository.go
+│   │   │   ├── account_repository.go
+│   │   │   ├── customer_repository.go
+│   │   │   ├── idempotency_repository.go
+│   │   │   ├── journal_entry_repository.go
+│   │   │   ├── transaction_repository.go
 │   │   │   └── tx_manager.go
 │   │   └── interfaces.go
 │   └── service
@@ -105,17 +108,19 @@ Repositories can be swapped (MySQL, SQLite) without touching business logic.
 │   ├── 000013_seed_platform_accounts.up.sql
 │   ├── 000014_fix_idempotency_keys.down.sql
 │   └── 000014_fix_idempotency_keys.up.sql
+├── scripts
+│   └── loadtest
+│       └── k6.js
 ├── docker-compose.yml
 ├── Dockerfile
 ├── go.mod
 ├── go.sum
 ├── LICENSE
-├── load_test.js
 ├── Makefile
 ├── prometheus.yml
 └── README.md
 
-17 directories, 72 files
+20 directories, 74 files
 ```
 
 ---
