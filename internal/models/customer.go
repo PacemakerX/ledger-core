@@ -12,7 +12,7 @@ type Customer struct {
 	FirstName 			string 			`db:"first_name"`
 	MiddleName 			*string 		`db:"middle_name"`
 	LastName 			string 			`db:"last_name"`
-	AadharNumber 		string 			`db:"aadhar_number"`
+	AadharNumber 		*string 			`db:"aadhar_number"`
 	CountryID     		int 			`db:"country_id"`
 	PhoneNumber 		string 			`db:"phone_number"`
 	Email 				string 			`db:"email"`

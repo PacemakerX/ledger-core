@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	domainerrors "github.com/PacemakerX/ledger-core/internal/errors"
@@ -52,6 +53,7 @@ func (h *transferHandler) HandleTransfer(w http.ResponseWriter, r *http.Request)
 			errors.Is(err, domainerrors.ErrTransactionLimitExceeded):
 			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		default:
+			fmt.Printf("transfer error: %v\n", err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 		}
 		return

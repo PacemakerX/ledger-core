@@ -280,7 +280,10 @@ func (s *transferService) Transfer(ctx context.Context, req TransferRequest) (*T
 	if err != nil {
 		return nil, fmt.Errorf("transfer: locking second account: %w", err)
 	}
-
+	if req.InitiatedBy == uuid.Nil {
+		req.InitiatedBy = fromAccount.CustomerID
+	}
+	fmt.Printf("%v\n", req.InitiatedBy)
 	transaction := &models.Transaction{
 		ID:             uuid.New(),
 		IdempotencyKey: req.IdempotencyKey,
