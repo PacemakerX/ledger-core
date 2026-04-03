@@ -35,6 +35,14 @@ func (h *transferHandler) HandleTransfer(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
+	
+	if err := validateTransferRequest(req); err != nil {
+		domainerrors.WriteError(w, chimiddleware.GetReqID(r.Context()),
+			http.StatusBadRequest,
+			"LEDGER_400_VALIDATION_ERROR",
+			err.Error())
+		return
+	}
 
 	response, err := h.service.Transfer(r.Context(), req)
 
