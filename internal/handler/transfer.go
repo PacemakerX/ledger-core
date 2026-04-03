@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 
 	domainerrors "github.com/PacemakerX/ledger-core/internal/errors"
 	"github.com/PacemakerX/ledger-core/internal/service"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
 type TransferService interface {
@@ -39,22 +39,38 @@ func (h *transferHandler) HandleTransfer(w http.ResponseWriter, r *http.Request)
 	response, err := h.service.Transfer(r.Context(), req)
 
 	if err != nil {
+		requestID := chimiddleware.GetReqID(r.Context())
 		switch {
 		case errors.Is(err, domainerrors.ErrNotFound):
-			http.Error(w, err.Error(), http.StatusNotFound)
+			domainerrors.WriteError(w, requestID, http.StatusNotFound,
+				domainerrors.CodeNotFound, "requested resource was not found")
 		case errors.Is(err, domainerrors.ErrInsufficientBalance):
-			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+			domainerrors.WriteError(w, requestID, http.StatusUnprocessableEntity,
+				domainerrors.CodeInsufficientBalance, "account does not have sufficient balance")
 		case errors.Is(err, domainerrors.ErrKYCNotVerified):
-			http.Error(w, err.Error(), http.StatusForbidden)
+			domainerrors.WriteError(w, requestID, http.StatusForbidden,
+				domainerrors.CodeKYCNotVerified, "customer KYC verification is not complete")
 		case errors.Is(err, domainerrors.ErrAccountInactive):
-			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
-		case errors.Is(err, domainerrors.ErrDailyLimitExceeded),
-			errors.Is(err, domainerrors.ErrMonthlyLimitExceeded),
-			errors.Is(err, domainerrors.ErrTransactionLimitExceeded):
-			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+			domainerrors.WriteError(w, requestID, http.StatusUnprocessableEntity,
+				domainerrors.CodeAccountInactive, "one or both accounts are inactive")
+		case errors.Is(err, domainerrors.ErrDailyLimitExceeded):
+			domainerrors.WriteError(w, requestID, http.StatusUnprocessableEntity,
+				domainerrors.CodeDailyLimitExceeded, "daily transfer limit exceeded")
+		case errors.Is(err, domainerrors.ErrMonthlyLimitExceeded):
+			domainerrors.WriteError(w, requestID, http.StatusUnprocessableEntity,
+				domainerrors.CodeMonthlyLimitExceeded, "monthly transfer limit exceeded")
+		case errors.Is(err, domainerrors.ErrYearlyLimitExceeded):
+			domainerrors.WriteError(w, requestID, http.StatusUnprocessableEntity,
+				domainerrors.CodeYearlyLimitExceeded, "yearly transfer limit exceeded")
+		case errors.Is(err, domainerrors.ErrTransactionLimitExceeded):
+			domainerrors.WriteError(w, requestID, http.StatusUnprocessableEntity,
+				domainerrors.CodeTransactionLimitExceeded, "amount exceeds per-transaction limit")
+		case errors.Is(err, domainerrors.ErrIdempotencyConflict):
+			domainerrors.WriteError(w, requestID, http.StatusConflict,
+				domainerrors.CodeIdempotencyConflict, "idempotency key reused with different payload")
 		default:
-			fmt.Printf("transfer error: %v\n", err)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			domainerrors.WriteError(w, requestID, http.StatusInternalServerError,
+				domainerrors.CodeInternalError, "an unexpected error occurred")
 		}
 		return
 	}

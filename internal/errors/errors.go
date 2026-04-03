@@ -32,7 +32,7 @@ var (
 	// Maps to HTTP 422.
 	ErrMonthlyLimitExceeded = errors.New("monthly limit exceeded")
 
-		// ErrMonthlyLimitExceeded is returned when a transfer would breach
+	// ErrMonthlyLimitExceeded is returned when a transfer would breach
 	// the account's monthly debit limit.
 	// Maps to HTTP 422.
 	ErrYearlyLimitExceeded = errors.New("yearly limit exceeded")
@@ -68,4 +68,18 @@ var (
 	// not map to a specific domain error. Wraps the underlying pgx error.
 	// Maps to HTTP 500.
 	ErrDatabase = errors.New("database error")
+)
+
+// Error codes for JSON responses — Stripe-style
+const (
+	CodeNotFound                 = "LEDGER_001_NOT_FOUND"
+	CodeInsufficientBalance      = "LEDGER_002_INSUFFICIENT_BALANCE"
+	CodeKYCNotVerified           = "LEDGER_003_KYC_NOT_VERIFIED"
+	CodeAccountInactive          = "LEDGER_004_ACCOUNT_INACTIVE"
+	CodeDailyLimitExceeded       = "LEDGER_005_DAILY_LIMIT_EXCEEDED"
+	CodeMonthlyLimitExceeded     = "LEDGER_006_MONTHLY_LIMIT_EXCEEDED"
+	CodeYearlyLimitExceeded      = "LEDGER_007_YEARLY_LIMIT_EXCEEDED"
+	CodeTransactionLimitExceeded = "LEDGER_008_TRANSACTION_LIMIT_EXCEEDED"
+	CodeIdempotencyConflict      = "LEDGER_009_IDEMPOTENCY_CONFLICT"
+	CodeInternalError            = "LEDGER_500_INTERNAL_ERROR"
 )
