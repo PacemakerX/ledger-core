@@ -27,9 +27,9 @@ func (r *transactionRepository) Create(ctx context.Context, tx repository.Tx, tr
 
 	pgxTx := tx.(pgx.Tx)
 
-	query := `INSERT INTO transactions( idempotency_key, type, status, initiated_by, metadata, from_account_id, to_account_id, amount, currency_id )
-	VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9 )
-	RETURNING id, idempotency_key, type, status, initiated_by, metadata, from_account_id, to_account_id, amount, currency_id, created_at,completed_at`
+	query := `INSERT INTO transactions(idempotency_key, type, status, initiated_by, metadata, from_account_id, to_account_id, amount, currency_id, original_transaction_id)
+	VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	RETURNING id, idempotency_key, type, status, initiated_by, metadata, from_account_id, to_account_id, amount, currency_id, original_transaction_id, created_at, completed_at`
 
 	err := pgxTx.QueryRow(ctx, query,
 		transaction.IdempotencyKey,
@@ -41,6 +41,7 @@ func (r *transactionRepository) Create(ctx context.Context, tx repository.Tx, tr
 		transaction.ToAccountID,
 		transaction.Amount,
 		transaction.CurrencyID,
+		transaction.OriginalTransactionID,
 	).Scan(
 		&transaction.ID,
 		&transaction.IdempotencyKey,
@@ -52,6 +53,7 @@ func (r *transactionRepository) Create(ctx context.Context, tx repository.Tx, tr
 		&transaction.ToAccountID,
 		&transaction.Amount,
 		&transaction.CurrencyID,
+		&transaction.OriginalTransactionID,
 		&transaction.CreatedAt,
 		&transaction.CompletedAt,
 	)
@@ -81,7 +83,7 @@ func (r *transactionRepository) UpdateStatus(ctx context.Context, tx repository.
 
 func (r *transactionRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Transaction, error) {
 	query := `SELECT id, idempotency_key, type, status, initiated_by, metadata, 
-              from_account_id, to_account_id, amount, currency_id, created_at, completed_at 
+              from_account_id, to_account_id, amount, currency_id, original_transaction_id, created_at, completed_at 
               FROM transactions
               WHERE id = $1`
 
@@ -97,6 +99,7 @@ func (r *transactionRepository) GetByID(ctx context.Context, id uuid.UUID) (*mod
 		&transaction.ToAccountID,
 		&transaction.Amount,
 		&transaction.CurrencyID,
+		&transaction.OriginalTransactionID,
 		&transaction.CreatedAt,
 		&transaction.CompletedAt,
 	)
@@ -105,8 +108,24 @@ func (r *transactionRepository) GetByID(ctx context.Context, id uuid.UUID) (*mod
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domainerrors.ErrNotFound
 		}
+		fmt.Printf("GetByID scan error: %v\n", err)  // add this
 		return nil, fmt.Errorf("transactionRepository.GetByID: %w", domainerrors.ErrDatabase)
 	}
 
 	return &transaction, nil
+}
+
+func (r *transactionRepository) GetTotalRefunded(ctx context.Context, originalTransactionID uuid.UUID) (int64, error) {
+	query := `SELECT COALESCE(SUM(amount), 0)
+              FROM transactions
+              WHERE original_transaction_id = $1
+              AND type = 'REFUND'
+              AND status = 'COMPLETED'`
+
+	var total int64
+	err := r.pool.QueryRow(ctx, query, originalTransactionID).Scan(&total)
+	if err != nil {
+		return 0, fmt.Errorf("transactionRepository.GetTotalRefunded: %w", domainerrors.ErrDatabase)
+	}
+	return total, nil
 }

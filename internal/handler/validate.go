@@ -35,3 +35,16 @@ func validateTransferRequest(req service.TransferRequest) error {
 	}
 	return nil
 }
+
+func validateRefundRequest(req service.RefundRequest) error {
+	if req.TransactionID == uuid.Nil {
+		return fmt.Errorf("transaction_id is required")
+	}
+	if req.Amount <= 0 {
+		return fmt.Errorf("amount must be greater than zero")
+	}
+	if req.IdempotencyKey == "" {
+		return fmt.Errorf("idempotency_key is required")
+	}
+	return nil
+}

@@ -65,6 +65,8 @@ type TransactionRepository interface {
 	// GetByID fetches a transaction by primary key. Used for idempotency
 	// lookups and status checks. Runs outside a transaction.
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Transaction, error)
+
+	GetTotalRefunded(ctx context.Context, originalTransactionID uuid.UUID) (int64, error)
 }
 
 // JournalEntryRepository defines operations on the journal_entries table.
@@ -92,7 +94,7 @@ type IdempotencyRepository interface {
 
 	// Create inserts a new idempotency key at the start of a transfer,
 	// before the db transaction begins. Acts as a reservation.
-	Create(ctx context.Context,tx Tx, idempotencyKey *models.IdempotencyKey) error
+	Create(ctx context.Context, tx Tx, idempotencyKey *models.IdempotencyKey) error
 
 	// SetResponse stores the final response body and status on the key
 	// after the transfer completes. Must be called inside the db transaction

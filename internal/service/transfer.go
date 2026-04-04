@@ -90,8 +90,12 @@ func (s *transferService) Transfer(ctx context.Context, req TransferRequest) (*T
 
 	// if key exists, this is a duplicate request — return cached response
 	if existing != nil {
+		txID, err := uuid.Parse(existing.ResponseBody)
+		if err != nil {
+			txID = uuid.Nil
+		}
 		return &TransferResponse{
-			TransactionID: uuid.Nil,
+			TransactionID: txID,
 			Status:        existing.ResponseStatus,
 			CreatedAt:     existing.CreatedAt,
 		}, nil

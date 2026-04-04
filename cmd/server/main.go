@@ -73,9 +73,21 @@ func main() {
 		accountLimitRepo,
 		cfg,
 	)
+	refundSvc := service.NewRefundService(
+		txManager,
+		accountRepo,
+		transactionRepo,
+		journalRepo,
+		idempotencyRepo,
+		customerRepo,
+		accountLimitRepo,
+		cfg,
+	)
 
 	// Handlers
 	transferHandler := handler.NewTransferHandler(transferSvc)
+	refundHandler := handler.NewRefundHandler(refundSvc)
+
 	//  Setup Router ───────────────────────────────────────────
 	r := chi.NewRouter()
 
@@ -93,6 +105,8 @@ func main() {
 	r.Route("/api/v1", func(r chi.Router) {
 
 		r.Post("/transfers", transferHandler.HandleTransfer)
+		r.Post("/refunds", refundHandler.HandleRefund)
+
 	})
 
 	//  Start Server ───────────────────────────────────────────
