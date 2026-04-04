@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -54,12 +55,13 @@ func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	status := "ok"
 
 	// Check database FIRST
-	poolStats := h.Pool.Stat()
-	if poolStats.TotalConns() > 0 {
-		checks["database"] = "ok"
-	} else {
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	if err := h.Pool.Ping(ctx); err != nil {
 		checks["database"] = "unavailable"
 		status = "degraded"
+	} else {
+		checks["database"] = "ok"
 	}
 
 	// THEN build response
