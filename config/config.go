@@ -22,6 +22,7 @@ type Config struct {
 type AppConfig struct {
 	Env               string
 	Port              string
+	Version           string
 	RateLimitRequests int
 	RateLimitWindow   int
 }
@@ -84,6 +85,7 @@ func Load() (*Config, error) {
 		App: AppConfig{
 			Env:               getEnv("APP_ENV", "development"),
 			Port:              getEnv("APP_PORT", "8080"),
+			Version: 			getEnv("APP_VERSION","1.5.0"),
 			RateLimitRequests: getEnvInt("RATE_LIMIT_REQUESTS", 1000),
 			RateLimitWindow:   getEnvInt("RATE_LIMIT_WINDOW_SECONDS", 60),
 		},

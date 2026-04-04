@@ -88,7 +88,13 @@ func main() {
 	// Handlers
 	transferHandler := handler.NewTransferHandler(transferSvc)
 	refundHandler := handler.NewRefundHandler(refundSvc)
-
+	healthHandler := handler.NewHealthHandler(
+		logger,
+		"ledger-core",
+		cfg.App.Env,
+		cfg.App.Version,
+		pool,
+	)
 	//  Setup Router ───────────────────────────────────────────
 	r := chi.NewRouter()
 
@@ -99,7 +105,7 @@ func main() {
 	r.Use(chimiddleware.Timeout(60 * time.Second)) // Request timeout
 	r.Use(middleware.MetricsMiddleware)
 	//  Routes ─────────────────────────────────────────────────
-	r.Get("/health", healthCheck(logger))
+	r.Get("/health", healthHandler.ServeHTTP)
 	r.Handle("/metrics", promhttp.Handler())
 
 	// API v1 group — all ledger routes will go here
@@ -150,24 +156,4 @@ func main() {
 	}
 
 	logger.Info("server stopped")
-}
-
-// ── Handlers ──────────────────────────────────────────────────────
-
-type healthResponse struct {
-	Status  string `json:"status"`
-	Env     string `json:"env"`
-	Version string `json:"version"`
-}
-
-func healthCheck(logger *zap.Logger) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("health check called",
-			zap.String("request_id", chimiddleware.GetReqID(r.Context())),
-		)
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok","service":"ledger-core","version":"0.1.0"}`))
-	}
 }
