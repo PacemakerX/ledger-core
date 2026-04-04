@@ -17,6 +17,7 @@ import (
 	"github.com/PacemakerX/ledger-core/internal/service"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httprate"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 )
@@ -103,7 +104,10 @@ func main() {
 
 	// API v1 group — all ledger routes will go here
 	r.Route("/api/v1", func(r chi.Router) {
-
+		r.Use(httprate.LimitByIP(
+			cfg.App.RateLimitRequests,
+			time.Duration(cfg.App.RateLimitWindow)*time.Second,
+		))
 		r.Post("/transfers", transferHandler.HandleTransfer)
 		r.Post("/refunds", refundHandler.HandleRefund)
 

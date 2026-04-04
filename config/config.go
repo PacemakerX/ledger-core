@@ -20,8 +20,10 @@ type Config struct {
 }
 
 type AppConfig struct {
-	Env  string
-	Port string
+	Env               string
+	Port              string
+	RateLimitRequests int
+	RateLimitWindow   int
 }
 
 type DatabaseConfig struct {
@@ -80,8 +82,10 @@ func Load() (*Config, error) {
 	}
 	return &Config{
 		App: AppConfig{
-			Env:  getEnv("APP_ENV", "development"),
-			Port: getEnv("APP_PORT", "8080"),
+			Env:               getEnv("APP_ENV", "development"),
+			Port:              getEnv("APP_PORT", "8080"),
+			RateLimitRequests: getEnvInt("RATE_LIMIT_REQUESTS", 1000),
+			RateLimitWindow:   getEnvInt("RATE_LIMIT_WINDOW_SECONDS", 60),
 		},
 		Database: DatabaseConfig{
 			Host:         getEnv("DB_HOST", "localhost"),
@@ -123,4 +127,16 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+func getEnvInt(key string, defaultVal int) int {
+	val := os.Getenv(key)
+	if val == "" {
+		return defaultVal
+	}
+	i, err := strconv.Atoi(val)
+	if err != nil {
+		return defaultVal
+	}
+	return i
 }
