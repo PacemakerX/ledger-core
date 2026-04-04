@@ -15,57 +15,63 @@ import (
 	"github.com/PacemakerX/ledger-core/internal/repository"
 )
 
-type transactionRepository struct{
+type transactionRepository struct {
 	pool *pgxpool.Pool
 }
 
-func NewTransactionRepository(pool *pgxpool.Pool) repository.TransactionRepository{
-	return  &transactionRepository{pool: pool}
+func NewTransactionRepository(pool *pgxpool.Pool) repository.TransactionRepository {
+	return &transactionRepository{pool: pool}
 }
 
+func (r *transactionRepository) Create(ctx context.Context, tx repository.Tx, transaction *models.Transaction) (*models.Transaction, error) {
 
-func (r *transactionRepository) Create(ctx context.Context, tx repository.Tx, transaction *models.Transaction) (*models.Transaction, error){
-	
-	pgxTx:=tx.(pgx.Tx)
+	pgxTx := tx.(pgx.Tx)
 
-	query:=`INSERT INTO transactions( idempotency_key, type, status, initiated_by, metadata )
-	VALUES($1, $2, $3, $4, $5)
-	RETURNING id, idempotency_key, type, status, initiated_by, metadata, created_at,completed_at`
+	query := `INSERT INTO transactions( idempotency_key, type, status, initiated_by, metadata, from_account_id, to_account_id, amount, currency_id )
+	VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9 )
+	RETURNING id, idempotency_key, type, status, initiated_by, metadata, from_account_id, to_account_id, amount, currency_id, created_at,completed_at`
 
-	err:=pgxTx.QueryRow(ctx,query,
+	err := pgxTx.QueryRow(ctx, query,
 		transaction.IdempotencyKey,
 		transaction.Type,
 		transaction.Status,
 		transaction.InitiatedBy,
-		transaction.Metadata).Scan(
-			&transaction.ID,
-			&transaction.IdempotencyKey,
-			&transaction.Type,
-			&transaction.Status,
-			&transaction.InitiatedBy,
-			&transaction.Metadata,
-			&transaction.CreatedAt,
-			&transaction.CompletedAt,
-		)
+		transaction.Metadata,
+		transaction.FromAccountID,
+		transaction.ToAccountID,
+		transaction.Amount,
+		transaction.CurrencyID,
+	).Scan(
+		&transaction.ID,
+		&transaction.IdempotencyKey,
+		&transaction.Type,
+		&transaction.Status,
+		&transaction.InitiatedBy,
+		&transaction.Metadata,
+		&transaction.FromAccountID,
+		&transaction.ToAccountID,
+		&transaction.Amount,
+		&transaction.CurrencyID,
+		&transaction.CreatedAt,
+		&transaction.CompletedAt,
+	)
 
-	if(err!=nil){
-		return nil,fmt.Errorf("transactionRepository.Create: %w",domainerrors.ErrDatabase)
+	if err != nil {
+		return nil, fmt.Errorf("transactionRepository.Create: %w", domainerrors.ErrDatabase)
 	}
-	return transaction,nil
+	return transaction, nil
 }
 
-func (r *transactionRepository) UpdateStatus(ctx context.Context, tx repository.Tx, id uuid.UUID, status string) error{
-	
-	pgxTx:=tx.(pgx.Tx)
+func (r *transactionRepository) UpdateStatus(ctx context.Context, tx repository.Tx, id uuid.UUID, status string) error {
 
-	query:=`UPDATE transactions
+	pgxTx := tx.(pgx.Tx)
+
+	query := `UPDATE transactions
 			SET status= $3,
 			completed_at= $2
 			WHERE id = $1`
 
-	_,err:=pgxTx.Exec(ctx,query,id,time.Now(),status)
-
-
+	_, err := pgxTx.Exec(ctx, query, id, time.Now(), status)
 
 	if err != nil {
 		return fmt.Errorf("transactionRepository.UpdateStatus: %w", domainerrors.ErrDatabase)
@@ -73,33 +79,34 @@ func (r *transactionRepository) UpdateStatus(ctx context.Context, tx repository.
 	return nil
 }
 
-func (r *transactionRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Transaction, error){
-	
-	query:=`SELECT id, idempotency_key, type, status, initiated_by, metadata, created_at, completed_at 
-			FROM transactions
-			WHERE id = $1`
+func (r *transactionRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Transaction, error) {
+	query := `SELECT id, idempotency_key, type, status, initiated_by, metadata, 
+              from_account_id, to_account_id, amount, currency_id, created_at, completed_at 
+              FROM transactions
+              WHERE id = $1`
 
 	var transaction models.Transaction
-
-	err:=r.pool.QueryRow(ctx,query,id).Scan(
+	err := r.pool.QueryRow(ctx, query, id).Scan(
 		&transaction.ID,
 		&transaction.IdempotencyKey,
 		&transaction.Type,
 		&transaction.Status,
 		&transaction.InitiatedBy,
 		&transaction.Metadata,
+		&transaction.FromAccountID,
+		&transaction.ToAccountID,
+		&transaction.Amount,
+		&transaction.CurrencyID,
 		&transaction.CreatedAt,
 		&transaction.CompletedAt,
 	)
 
-	if(err!=nil){
-
-		if errors.Is(err,pgx.ErrNoRows){
-			return  nil,domainerrors.ErrNotFound
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domainerrors.ErrNotFound
 		}
-		return nil, fmt.Errorf("transactionRepository.GetByID: %w", 
-		domainerrors.ErrDatabase)
+		return nil, fmt.Errorf("transactionRepository.GetByID: %w", domainerrors.ErrDatabase)
 	}
-	
-	return &transaction,nil
+
+	return &transaction, nil
 }

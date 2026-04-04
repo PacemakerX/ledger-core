@@ -283,13 +283,16 @@ func (s *transferService) Transfer(ctx context.Context, req TransferRequest) (*T
 	if req.InitiatedBy == uuid.Nil {
 		req.InitiatedBy = fromAccount.CustomerID
 	}
-	fmt.Printf("%v\n", req.InitiatedBy)
 	transaction := &models.Transaction{
 		ID:             uuid.New(),
 		IdempotencyKey: req.IdempotencyKey,
 		Type:           "TRANSFER",
 		Status:         "PENDING",
 		InitiatedBy:    req.InitiatedBy,
+		FromAccountID:  &req.FromAccountID,
+		ToAccountID:    &req.ToAccountID,
+		Amount:         req.Amount,
+		CurrencyID:     fromAccount.CurrencyID,
 	}
 
 	createdTx, err := s.transaction.Create(ctx, tx, transaction)

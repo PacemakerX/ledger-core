@@ -1,0 +1,3 @@
+ALTER TABLE transactions
+DROP COLUMN IF EXISTS amount,
+DROP COLUMN IF EXISTS currency_id;

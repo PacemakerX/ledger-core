@@ -26,5 +26,12 @@ func validateTransferRequest(req service.TransferRequest) error {
 	if req.Currency == "" {
 		return fmt.Errorf("currency is required")
 	}
+
+	const MinTransferAmount = int64(100) // 1 rupee minimum
+	const PlatformFee = int64(5)         // 5 paise
+
+	if req.Amount < MinTransferAmount {
+		return fmt.Errorf("amount must be at least %d paise", MinTransferAmount)
+	}
 	return nil
 }
