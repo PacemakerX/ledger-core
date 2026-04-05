@@ -41,6 +41,14 @@ func NewHealthHandler(logger *zap.Logger, service, env, version string, pool *pg
 	}
 }
 
+// ServeHTTP returns service and database health
+// @Summary      Health check
+// @Description  Returns service status, uptime, version, and database connectivity
+// @Tags         health
+// @Produce      json
+// @Success      200 {object} handler.HealthResponse
+// @Failure      503 {object} handler.HealthResponse
+// @Router       /health [get]
 func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	reqID := chimiddleware.GetReqID(r.Context())
 

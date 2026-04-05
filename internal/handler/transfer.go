@@ -23,6 +23,18 @@ func NewTransferHandler(service TransferService) *transferHandler {
 	return &transferHandler{service: service}
 }
 
+// HandleTransfer creates a new funds transfer
+// @Summary      Create transfer
+// @Description  Transfers funds between two accounts with double-entry bookkeeping
+// @Tags         transfers
+// @Accept       json
+// @Produce      json
+// @Param        request body service.TransferRequest true "Transfer request"
+// @Success      200 {object} service.TransferResponse
+// @Failure      400 {object} map[string]string
+// @Failure      422 {object} map[string]string
+// @Failure      500 {object} map[string]string
+// @Router       /transfers [post]
 func (h *transferHandler) HandleTransfer(w http.ResponseWriter, r *http.Request) {
 	// 1. decode JSON body into service.TransferRequest
 	// 2. call h.service.Transfer

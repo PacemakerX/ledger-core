@@ -24,6 +24,19 @@ func NewRefundHandler(service RefundService) *refundHandler {
 	return &refundHandler{service: service}
 }
 
+// HandleRefund creates a refund for a completed transfer
+// @Summary      Create refund
+// @Description  Refunds a completed transfer — full or partial. Amount must not exceed original transaction amount.
+// @Tags         refunds
+// @Accept       json
+// @Produce      json
+// @Param        request body service.RefundRequest true "Refund request"
+// @Success      200 {object} service.RefundResponse
+// @Failure      400 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Failure      422 {object} map[string]string
+// @Failure      500 {object} map[string]string
+// @Router       /refunds [post]
 func (h *refundHandler) HandleRefund(w http.ResponseWriter, r *http.Request) {
 	// 1. decode JSON body into service.TransferRequest
 	// 2. call h.service.Transfer

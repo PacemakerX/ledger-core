@@ -26,6 +26,20 @@ func NewAccountHandler(service AccountService) *accountHandler {
 	return &accountHandler{service: service}
 }
 
+// HandleCreateAccount opens a new account for a verified customer
+// @Summary      Create account
+// @Description  Opens a new account for a KYC-verified customer. One account per customer per currency per type.
+// @Tags         accounts
+// @Accept       json
+// @Produce      json
+// @Param        request body service.CreateAccountRequest true "Account details"
+// @Success      201 {object} service.CreateAccountResponse
+// @Failure      400 {object} map[string]string
+// @Failure      403 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Failure      409 {object} map[string]string
+// @Failure      500 {object} map[string]string
+// @Router       /accounts [post]
 func (h *accountHandler) HandleCreateAccount(w http.ResponseWriter, r *http.Request) {
 	requestID := chimiddleware.GetReqID(r.Context())
 

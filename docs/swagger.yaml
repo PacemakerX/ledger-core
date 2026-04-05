@@ -1,0 +1,372 @@
+basePath: /api/v1
+definitions:
+  github_com_PacemakerX_ledger-core_internal_service.CreateAccountRequest:
+    properties:
+      account_type:
+        type: string
+      currency_code:
+        type: string
+      customer_id:
+        type: string
+    type: object
+  github_com_PacemakerX_ledger-core_internal_service.CreateAccountResponse:
+    properties:
+      account_id:
+        type: string
+      account_number:
+        type: string
+      account_type:
+        type: string
+      currency_code:
+        type: string
+      customer_id:
+        type: string
+      status:
+        type: string
+    type: object
+  github_com_PacemakerX_ledger-core_internal_service.CreateCustomerRequest:
+    properties:
+      aadhar_number:
+        type: string
+      country_code:
+        type: string
+      email:
+        type: string
+      first_name:
+        type: string
+      last_name:
+        type: string
+      middle_name:
+        type: string
+      phone_number:
+        type: string
+    type: object
+  github_com_PacemakerX_ledger-core_internal_service.CreateCustomerResponse:
+    properties:
+      customer_id:
+        type: string
+      kyc_status:
+        type: string
+      status:
+        type: string
+    type: object
+  github_com_PacemakerX_ledger-core_internal_service.RefundRequest:
+    properties:
+      amount:
+        type: integer
+      idempotency_key:
+        type: string
+      transactionID:
+        type: string
+    type: object
+  github_com_PacemakerX_ledger-core_internal_service.RefundResponse:
+    properties:
+      created_at:
+        type: string
+      status:
+        type: string
+      transaction_id:
+        type: string
+    type: object
+  github_com_PacemakerX_ledger-core_internal_service.TransferRequest:
+    properties:
+      amount:
+        type: integer
+      currency:
+        type: string
+      description:
+        type: string
+      from_account_id:
+        type: string
+      idempotency_key:
+        type: string
+      initiated_by:
+        type: string
+      to_account_id:
+        type: string
+    type: object
+  github_com_PacemakerX_ledger-core_internal_service.TransferResponse:
+    properties:
+      createdAt:
+        type: string
+      status:
+        type: string
+      transactionID:
+        type: string
+    type: object
+  github_com_PacemakerX_ledger-core_internal_service.UpdateKYCRequest:
+    properties:
+      status:
+        type: string
+    type: object
+  internal_handler.HealthResponse:
+    properties:
+      checks:
+        additionalProperties:
+          type: string
+        type: object
+      env:
+        type: string
+      service:
+        type: string
+      status:
+        type: string
+      timestamp:
+        type: string
+      uptime:
+        type: string
+      version:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Production-grade double-entry accounting ledger in Go and PostgreSQL
+  title: ledger-core API
+  version: "1.0"
+paths:
+  /accounts:
+    post:
+      consumes:
+      - application/json
+      description: Opens a new account for a KYC-verified customer. One account per
+        customer per currency per type.
+      parameters:
+      - description: Account details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_PacemakerX_ledger-core_internal_service.CreateAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_PacemakerX_ledger-core_internal_service.CreateAccountResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create account
+      tags:
+      - accounts
+  /customers:
+    post:
+      consumes:
+      - application/json
+      description: Registers a new customer with unverified KYC status
+      parameters:
+      - description: Customer details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_PacemakerX_ledger-core_internal_service.CreateCustomerRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_PacemakerX_ledger-core_internal_service.CreateCustomerResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create customer
+      tags:
+      - customers
+  /customers/{id}/kyc:
+    patch:
+      consumes:
+      - application/json
+      description: Transitions customer KYC status — pending, verified, or rejected
+      parameters:
+      - description: Customer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: KYC status
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_PacemakerX_ledger-core_internal_service.UpdateKYCRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update KYC status
+      tags:
+      - customers
+  /health:
+    get:
+      description: Returns service status, uptime, version, and database connectivity
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_handler.HealthResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/internal_handler.HealthResponse'
+      summary: Health check
+      tags:
+      - health
+  /refunds:
+    post:
+      consumes:
+      - application/json
+      description: Refunds a completed transfer — full or partial. Amount must not
+        exceed original transaction amount.
+      parameters:
+      - description: Refund request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_PacemakerX_ledger-core_internal_service.RefundRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_PacemakerX_ledger-core_internal_service.RefundResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create refund
+      tags:
+      - refunds
+  /transfers:
+    post:
+      consumes:
+      - application/json
+      description: Transfers funds between two accounts with double-entry bookkeeping
+      parameters:
+      - description: Transfer request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_PacemakerX_ledger-core_internal_service.TransferRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_PacemakerX_ledger-core_internal_service.TransferResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create transfer
+      tags:
+      - transfers
+swagger: "2.0"

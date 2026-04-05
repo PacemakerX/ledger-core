@@ -27,6 +27,18 @@ func NewCustomerHandler(service CustomerService) *customerHandler {
 	return &customerHandler{service: service}
 }
 
+// HandleCreateCustomer registers a new customer
+// @Summary      Create customer
+// @Description  Registers a new customer with unverified KYC status
+// @Tags         customers
+// @Accept       json
+// @Produce      json
+// @Param        request body service.CreateCustomerRequest true "Customer details"
+// @Success      201 {object} service.CreateCustomerResponse
+// @Failure      400 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Failure      500 {object} map[string]string
+// @Router       /customers [post]
 func (h *customerHandler) HandleCreateCustomer(w http.ResponseWriter, r *http.Request) {
 	var req service.CreateCustomerRequest
 
@@ -90,6 +102,19 @@ func (h *customerHandler) HandleCreateCustomer(w http.ResponseWriter, r *http.Re
 	json.NewEncoder(w).Encode(response)
 }
 
+// HandleUpdateKYC updates customer KYC status
+// @Summary      Update KYC status
+// @Description  Transitions customer KYC status — pending, verified, or rejected
+// @Tags         customers
+// @Accept       json
+// @Produce      json
+// @Param        id   path      string               true  "Customer ID"
+// @Param        request body service.UpdateKYCRequest true "KYC status"
+// @Success      200 {object} map[string]string
+// @Failure      400 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Failure      500 {object} map[string]string
+// @Router       /customers/{id}/kyc [patch]
 func (h *customerHandler) HandleUpdateKYC(w http.ResponseWriter, r *http.Request) {
 	requestID := chimiddleware.GetReqID(r.Context())
 

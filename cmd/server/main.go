@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/PacemakerX/ledger-core/config"
+	_ "github.com/PacemakerX/ledger-core/docs"
 	"github.com/PacemakerX/ledger-core/internal/db"
 	"github.com/PacemakerX/ledger-core/internal/handler"
 	"github.com/PacemakerX/ledger-core/internal/middleware"
@@ -19,9 +20,15 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"go.uber.org/zap"
 )
 
+// @title           ledger-core API
+// @version         1.0
+// @description     Production-grade double-entry accounting ledger in Go and PostgreSQL
+// @host            localhost:8080
+// @BasePath        /api/v1
 func main() {
 
 	//  Load Config ────────────────────────────────────────────
@@ -113,22 +120,85 @@ func main() {
 	r.Use(chimiddleware.Timeout(60 * time.Second)) // Request timeout
 	r.Use(middleware.MetricsMiddleware)
 	//  Routes ─────────────────────────────────────────────────
+	// Health
+	// @Summary Health check
+	// @Description Returns service and database health
+	// @Tags health
+	// @Produce json
+	// @Success 200 {object} map[string]string
+	// @Router /health [get]
 	r.Get("/health", healthHandler.ServeHTTP)
+
+	// Metrics
+	// @Summary Prometheus metrics
+	// @Description Exposes application metrics for Prometheus
+	// @Tags metrics
+	// @Produce plain
+	// @Success 200 {string} string "metrics payload"
+	// @Router /metrics [get]
 	r.Handle("/metrics", promhttp.Handler())
+
+	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
 	// API v1 group — all ledger routes will go here
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(httprate.LimitByIP(cfg.App.RateLimitRequests, time.Duration(cfg.App.RateLimitWindow)*time.Second))
 
+		// Transfer
+		// @Summary Create transfer
+		// @Description Creates a new funds transfer
+		// @Tags transfers
+		// @Accept json
+		// @Produce json
+		// @Success 201 {object} map[string]interface{}
+		// @Failure 400 {object} map[string]string
+		// @Failure 409 {object} map[string]string
+		// @Router /api/v1/transfers [post]
 		r.Post("/transfers", transferHandler.HandleTransfer)
+
+		// Refund
+		// @Summary Create refund
+		// @Description Creates a refund for a previous transfer
+		// @Tags refunds
+		// @Accept json
+		// @Produce json
+		// @Success 201 {object} map[string]interface{}
+		// @Failure 400 {object} map[string]string
+		// @Failure 409 {object} map[string]string
+		// @Router /api/v1/refunds [post]
 		r.Post("/refunds", refundHandler.HandleRefund)
 
 		// Customer routes
+		// @Summary Create customer
+		// @Description Creates a new customer
+		// @Tags customers
+		// @Accept json
+		// @Produce json
+		// @Success 201 {object} map[string]interface{}
+		// @Failure 400 {object} map[string]string
+		// @Router /api/v1/customers [post]
 		r.Post("/customers", customerHandler.HandleCreateCustomer)
+
+		// @Summary Update customer KYC
+		// @Description Updates customer KYC information
+		// @Tags customers
+		// @Accept json
+		// @Produce json
+		// @Success 200 {object} map[string]interface{}
+		// @Failure 400 {object} map[string]string
+		// @Failure 404 {object} map[string]string
+		// @Router /api/v1/customers/{id}/kyc [patch]
 		r.Patch("/customers/{id}/kyc", customerHandler.HandleUpdateKYC)
 
+		// @Summary Create account
+		// @Description Creates a new account
+		// @Tags accounts
+		// @Accept json
+		// @Produce json
+		// @Success 201 {object} map[string]interface{}
+		// @Failure 400 {object} map[string]string
+		// @Router /api/v1/accounts [post]
 		r.Post("/accounts", accountHandler.HandleCreateAccount)
-
 	})
 
 	//  Start Server ───────────────────────────────────────────
