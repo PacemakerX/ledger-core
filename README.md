@@ -4,7 +4,7 @@ A production-grade double-entry accounting ledger built in Go and PostgreSQL.
 Handles concurrent transfers with full ACID guarantees, idempotency, and real-time observability.
 
 ---
-
+```bash
 .
 ├── cmd
 │   └── server
