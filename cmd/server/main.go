@@ -137,23 +137,11 @@ func main() {
 	r.Use(chimiddleware.Recoverer)                 // Recovers from panics gracefully
 	r.Use(chimiddleware.Timeout(60 * time.Second)) // Request timeout
 	r.Use(middleware.MetricsMiddleware)
+	r.Use(middleware.RequestLogger(logger))
+
 	//  Routes ─────────────────────────────────────────────────
-	// Health
-	// @Summary Health check
-	// @Description Returns service and database health
-	// @Tags health
-	// @Produce json
-	// @Success 200 {object} map[string]string
-	// @Router /health [get]
 	r.Get("/health", healthHandler.ServeHTTP)
 
-	// Metrics
-	// @Summary Prometheus metrics
-	// @Description Exposes application metrics for Prometheus
-	// @Tags metrics
-	// @Produce plain
-	// @Success 200 {string} string "metrics payload"
-	// @Router /metrics [get]
 	r.Handle("/metrics", promhttp.Handler())
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
