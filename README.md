@@ -5,26 +5,6 @@ Handles concurrent transfers with full ACID guarantees, idempotency, and real-ti
 
 ---
 
-## Architecture
-
-```bash
-HTTP Request
-     ↓
-Handler         — parses JSON, maps errors to HTTP status codes
-     ↓
-Service         — business logic, orchestrates repositories
-     ↓
-Interfaces      — ports (hexagonal architecture)
-     ↓
-Postgres        — adapters, all SQL lives here
-```
-
-**Hexagonal architecture** — the service layer has zero knowledge of PostgreSQL.
-Repositories can be swapped (MySQL, SQLite) without touching business logic.
-
-### Project Structure
-
-```bash
 .
 ├── cmd
 │   └── server
@@ -41,17 +21,27 @@ Repositories can be swapped (MySQL, SQLite) without touching business logic.
 │   │   ├── 005-why-zap.md
 │   │   ├── 006-why-uuid.md
 │   │   ├── 007-why-golang-migrate-over-gorm-automigrate.md
-│   │   └── 008-why-double-entry-accounting.md
-│   └── images
-│       ├── grafana.jpg
-│       └── load_test.png
+│   │   ├── 008-why-double-entry-accounting.md
+│   │   └── 009-original-transaction-id.md
+│   ├── images
+│   │   ├── grafana.jpg
+│   │   └── load_test.png
+│   ├── docs.go
+│   ├── swagger.json
+│   └── swagger.yaml
 ├── internal
 │   ├── db
 │   │   └── postgres.go
 │   ├── errors
-│   │   └── errors.go
+│   │   ├── errors.go
+│   │   └── response.go
 │   ├── handler
-│   │   └── transfer.go
+│   │   ├── account.go
+│   │   ├── customer.go
+│   │   ├── health.go
+│   │   ├── refund.go
+│   │   ├── transfer.go
+│   │   └── validate.go
 │   ├── metrics
 │   │   └── metrics.go
 │   ├── middleware
@@ -72,6 +62,9 @@ Repositories can be swapped (MySQL, SQLite) without touching business logic.
 │   │   ├── postgres
 │   │   │   ├── account_limit_repository.go
 │   │   │   ├── account_repository.go
+│   │   │   ├── account_type_repository.go
+│   │   │   ├── country_repository.go
+│   │   │   ├── currency_repository.go
 │   │   │   ├── customer_repository.go
 │   │   │   ├── idempotency_repository.go
 │   │   │   ├── journal_entry_repository.go
@@ -79,6 +72,9 @@ Repositories can be swapped (MySQL, SQLite) without touching business logic.
 │   │   │   └── tx_manager.go
 │   │   └── interfaces.go
 │   └── service
+│       ├── account.go
+│       ├── customer.go
+│       ├── refund.go
 │       └── transfer.go
 ├── migrations
 │   ├── 000001_create_currencies.down.sql
@@ -107,7 +103,13 @@ Repositories can be swapped (MySQL, SQLite) without touching business logic.
 │   ├── 000012_create_indexes.up.sql
 │   ├── 000013_seed_platform_accounts.up.sql
 │   ├── 000014_fix_idempotency_keys.down.sql
-│   └── 000014_fix_idempotency_keys.up.sql
+│   ├── 000014_fix_idempotency_keys.up.sql
+│   ├── 000015_add_account_ids_to_transactions.down.sql
+│   ├── 000015_add_account_ids_to_transactions.up.sql
+│   ├── 000016_add_amount_to_transactions.down.sql
+│   ├── 000016_add_amount_to_transactions.up.sql
+│   ├── 000017_add_original_transaction_id.down.sql
+│   └── 000017_add_original_transaction_id.up.sql
 ├── scripts
 │   └── loadtest
 │       └── k6.js
@@ -120,7 +122,7 @@ Repositories can be swapped (MySQL, SQLite) without touching business logic.
 ├── prometheus.yml
 └── README.md
 
-20 directories, 74 files
+20 directories, 96 files
 ```
 
 ---
