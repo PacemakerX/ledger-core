@@ -96,6 +96,8 @@ func main() {
 	)
 	customerSvc := service.NewCustomerService(customerRepo, countryRepo)
 	accountSvc := service.NewAccountService(customerRepo, accountRepo, currencyRepo, accountTypeRepo)
+	transactionSvc := service.NewTransactionService(accountRepo, transactionRepo)
+	statementSvc := service.NewStatementService(accountRepo, transactionRepo, journalRepo)
 
 	// Handlers
 	transferHandler := handler.NewTransferHandler(transferSvc)
@@ -109,7 +111,8 @@ func main() {
 	)
 	customerHandler := handler.NewCustomerHandler(customerSvc)
 	accountHandler := handler.NewAccountHandler(accountSvc)
-
+	transactionHandler := handler.NewTransactionHandler(transactionSvc)
+	statementHandler := handler.NewStatementHandler(statementSvc)
 	//  Setup Router ───────────────────────────────────────────
 	r := chi.NewRouter()
 
@@ -199,6 +202,10 @@ func main() {
 		// @Failure 400 {object} map[string]string
 		// @Router /api/v1/accounts [post]
 		r.Post("/accounts", accountHandler.HandleCreateAccount)
+
+		r.Get("/accounts/{id}/transactions", transactionHandler.HandleGetTransactionHistory)
+
+		r.Get("/accounts/{id}/statement", statementHandler.HandleGetStatement)
 	})
 
 	//  Start Server ───────────────────────────────────────────

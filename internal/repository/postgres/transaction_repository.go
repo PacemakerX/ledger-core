@@ -108,7 +108,7 @@ func (r *transactionRepository) GetByID(ctx context.Context, id uuid.UUID) (*mod
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domainerrors.ErrNotFound
 		}
-		fmt.Printf("GetByID scan error: %v\n", err)  // add this
+		fmt.Printf("GetByID scan error: %v\n", err) // add this
 		return nil, fmt.Errorf("transactionRepository.GetByID: %w", domainerrors.ErrDatabase)
 	}
 
@@ -128,4 +128,71 @@ func (r *transactionRepository) GetTotalRefunded(ctx context.Context, originalTr
 		return 0, fmt.Errorf("transactionRepository.GetTotalRefunded: %w", domainerrors.ErrDatabase)
 	}
 	return total, nil
+}
+
+func (r *transactionRepository) GetByAccountID(ctx context.Context, accountID uuid.UUID, limit int, cursor *uuid.UUID) ([]models.Transaction, error) {
+
+	var query string
+	var args []interface{}
+
+	if cursor == nil {
+		// First page — no cursor
+		query = `SELECT id, idempotency_key, type, status, initiated_by, metadata,
+				from_account_id, to_account_id, amount, currency_id,
+				original_transaction_id, created_at, completed_at
+				FROM transactions
+				WHERE (from_account_id = $1 OR to_account_id = $1)
+				AND status = 'COMPLETED'
+				ORDER BY id DESC
+				LIMIT $2`
+		args = []interface{}{accountID, limit + 1}
+	} else {
+		// Subsequent pages — cursor present
+		query = `SELECT id, idempotency_key, type, status, initiated_by, metadata,
+				from_account_id, to_account_id, amount, currency_id,
+				original_transaction_id, created_at, completed_at
+				FROM transactions
+				WHERE (from_account_id = $1 OR to_account_id = $1)
+				AND status = 'COMPLETED'
+				AND id < $2
+				ORDER BY id DESC
+				LIMIT $3`
+		args = []interface{}{accountID, cursor, limit + 1}
+	}
+
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("transactionRepository.GetByAccountID: %w", domainerrors.ErrDatabase)
+	}
+	defer rows.Close()
+
+	var transactions []models.Transaction
+	for rows.Next() {
+		var t models.Transaction
+		err := rows.Scan(
+			&t.ID,
+			&t.IdempotencyKey,
+			&t.Type,
+			&t.Status,
+			&t.InitiatedBy,
+			&t.Metadata,
+			&t.FromAccountID,
+			&t.ToAccountID,
+			&t.Amount,
+			&t.CurrencyID,
+			&t.OriginalTransactionID,
+			&t.CreatedAt,
+			&t.CompletedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("transactionRepository.GetByAccountID: scan: %w", domainerrors.ErrDatabase)
+		}
+		transactions = append(transactions, t)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("transactionRepository.GetByAccountID: rows: %w", domainerrors.ErrDatabase)
+	}
+
+	return transactions, nil
 }

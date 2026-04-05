@@ -67,6 +67,11 @@ type TransactionRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Transaction, error)
 
 	GetTotalRefunded(ctx context.Context, originalTransactionID uuid.UUID) (int64, error)
+
+	// GetByAccountID returns paginated transactions for an account.
+	// Uses cursor-based pagination — cursor is the last seen transaction ID.
+	// Returns transactions in descending order (newest first).
+	GetByAccountID(ctx context.Context, accountID uuid.UUID, limit int, cursor *uuid.UUID) ([]models.Transaction, error)
 }
 
 // JournalEntryRepository defines operations on the journal_entries table.

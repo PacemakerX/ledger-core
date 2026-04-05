@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 
+	domainerrors "github.com/PacemakerX/ledger-core/internal/errors"
 	"github.com/PacemakerX/ledger-core/internal/service"
 	"github.com/google/uuid"
 )
@@ -47,4 +49,8 @@ func validateRefundRequest(req service.RefundRequest) error {
 		return fmt.Errorf("idempotency_key is required")
 	}
 	return nil
+}
+
+func isNotFound(err error) bool {
+	return errors.Is(err, domainerrors.ErrNotFound)
 }
