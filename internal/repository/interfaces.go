@@ -108,6 +108,9 @@ type CustomerRepository interface {
 	// GetByID fetches a customer by primary key.
 	// Used to validate KYC status before allowing a transfer.
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Customer, error)
+
+	Create(ctx context.Context, customer *models.Customer) (*models.Customer, error)
+	UpdateKYC(ctx context.Context, id uuid.UUID, status string) error
 }
 
 // AccountLimitRepository defines operations on the account_limits table.
@@ -120,4 +123,16 @@ type AccountLimitRepository interface {
 	// UpdateUsage increments current_usage for a limit record inside a transaction.
 	// Called after journal entries are written, before Commit.
 	UpdateUsage(ctx context.Context, tx Tx, limitID uuid.UUID, amount int64) error
+}
+
+type CountryRepository interface {
+	GetByCode(ctx context.Context, code string) (*models.Country, error)
+}
+
+type CurrencyRepository interface {
+	GetByCode(ctx context.Context, code string) (*models.Currency, error)
+}
+
+type AccountTypeRepository interface {
+	GetByName(ctx context.Context, name string) (*models.AccountType, error)
 }
