@@ -16,6 +16,7 @@ import (
 	"github.com/PacemakerX/ledger-core/internal/middleware"
 	"github.com/PacemakerX/ledger-core/internal/repository/postgres"
 	"github.com/PacemakerX/ledger-core/internal/service"
+	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
@@ -60,6 +61,20 @@ func main() {
 		zap.String("host", cfg.Database.Host),
 		zap.String("db", cfg.Database.Name),
 	)
+
+	if cfg.App.SentryDSN != "" {
+		err := sentry.Init(sentry.ClientOptions{
+			Dsn:              cfg.App.SentryDSN,
+			Environment:      cfg.App.Env,
+			Release:          cfg.App.Version,
+			TracesSampleRate: 1.0,
+		})
+		if err != nil {
+			logger.Fatal("failed to initialize sentry", zap.Error(err))
+		}
+		defer sentry.Flush(2 * time.Second)
+		logger.Info("sentry initialized")
+	}
 
 	// Repositories
 	accountRepo := postgres.NewAccountRepository(pool)

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
@@ -60,8 +61,9 @@ func (h *statementHandler) HandleGetStatement(w http.ResponseWriter, r *http.Req
 			domainerrors.WriteError(w, requestID, http.StatusNotFound,
 				domainerrors.CodeNotFound, "account not found")
 		default:
+			sentry.CaptureException(err)
 			domainerrors.WriteError(w, requestID, http.StatusInternalServerError,
-				domainerrors.CodeInternalError, "failed to generate statement")
+				domainerrors.CodeInternalError, "an unexpected error occurred")
 		}
 		return
 	}

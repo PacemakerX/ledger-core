@@ -8,6 +8,7 @@ import (
 
 	domainerrors "github.com/PacemakerX/ledger-core/internal/errors"
 	"github.com/PacemakerX/ledger-core/internal/service"
+	"github.com/getsentry/sentry-go"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
@@ -47,7 +48,7 @@ func (h *transferHandler) HandleTransfer(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	
+
 	if err := validateTransferRequest(req); err != nil {
 		domainerrors.WriteError(w, chimiddleware.GetReqID(r.Context()),
 			http.StatusBadRequest,
@@ -89,6 +90,7 @@ func (h *transferHandler) HandleTransfer(w http.ResponseWriter, r *http.Request)
 			domainerrors.WriteError(w, requestID, http.StatusConflict,
 				domainerrors.CodeIdempotencyConflict, "idempotency key reused with different payload")
 		default:
+			sentry.CaptureException(err)
 			domainerrors.WriteError(w, requestID, http.StatusInternalServerError,
 				domainerrors.CodeInternalError, "an unexpected error occurred")
 		}

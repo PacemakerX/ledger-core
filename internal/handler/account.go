@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/getsentry/sentry-go"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 
@@ -90,6 +91,7 @@ func (h *accountHandler) HandleCreateAccount(w http.ResponseWriter, r *http.Requ
 			domainerrors.WriteError(w, requestID, http.StatusConflict,
 				domainerrors.CodeIdempotencyConflict, "account already exists for this customer, currency and type")
 		default:
+			sentry.CaptureException(err)
 			domainerrors.WriteError(w, requestID, http.StatusInternalServerError,
 				domainerrors.CodeInternalError, "an unexpected error occurred")
 		}

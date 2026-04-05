@@ -7,6 +7,7 @@ import (
 
 	"encoding/json"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
@@ -95,6 +96,7 @@ func (h *transactionHandler) HandleGetTransactionHistory(w http.ResponseWriter, 
 			domainerrors.WriteError(w, requestID, http.StatusNotFound,
 				domainerrors.CodeNotFound, "account not found")
 		default:
+			sentry.CaptureException(err)
 			domainerrors.WriteError(w, requestID, http.StatusInternalServerError,
 				domainerrors.CodeInternalError, "an unexpected error occurred")
 		}

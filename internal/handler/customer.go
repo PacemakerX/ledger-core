@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
@@ -91,6 +92,7 @@ func (h *customerHandler) HandleCreateCustomer(w http.ResponseWriter, r *http.Re
 			domainerrors.WriteError(w, requestID, http.StatusConflict,
 				domainerrors.CodeIdempotencyConflict, "customer already exists")
 		default:
+			sentry.CaptureException(err)
 			domainerrors.WriteError(w, requestID, http.StatusInternalServerError,
 				domainerrors.CodeInternalError, "an unexpected error occurred")
 		}
@@ -102,19 +104,6 @@ func (h *customerHandler) HandleCreateCustomer(w http.ResponseWriter, r *http.Re
 	json.NewEncoder(w).Encode(response)
 }
 
-// HandleUpdateKYC updates customer KYC status
-// @Summary      Update KYC status
-// @Description  Transitions customer KYC status — pending, verified, or rejected
-// @Tags         customers
-// @Accept       json
-// @Produce      json
-// @Param        id   path      string               true  "Customer ID"
-// @Param        request body service.UpdateKYCRequest true "KYC status"
-// @Success      200 {object} map[string]string
-// @Failure      400 {object} map[string]string
-// @Failure      404 {object} map[string]string
-// @Failure      500 {object} map[string]string
-// @Router       /customers/{id}/kyc [patch]
 func (h *customerHandler) HandleUpdateKYC(w http.ResponseWriter, r *http.Request) {
 	requestID := chimiddleware.GetReqID(r.Context())
 
@@ -145,8 +134,9 @@ func (h *customerHandler) HandleUpdateKYC(w http.ResponseWriter, r *http.Request
 			domainerrors.WriteError(w, requestID, http.StatusNotFound,
 				domainerrors.CodeNotFound, "customer not found")
 		default:
+			sentry.CaptureException(err)
 			domainerrors.WriteError(w, requestID, http.StatusInternalServerError,
-				domainerrors.CodeInternalError, err.Error())
+				domainerrors.CodeInternalError, "an unexpected error occurred")
 		}
 		return
 	}
