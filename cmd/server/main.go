@@ -62,6 +62,9 @@ func main() {
 	customerRepo := postgres.NewCustomerRepository(pool)
 	accountLimitRepo := postgres.NewAccountLimitRepository(pool)
 	txManager := postgres.NewTxManager(pool)
+	countryRepo := postgres.NewCountryRepository(pool)
+	currencyRepo := postgres.NewCurrencyRepository(pool)
+	accountTypeRepo := postgres.NewAccountTypeRepository(pool)
 
 	// Services
 	transferSvc := service.NewTransferService(
@@ -84,6 +87,8 @@ func main() {
 		accountLimitRepo,
 		cfg,
 	)
+	customerSvc := service.NewCustomerService(customerRepo, countryRepo)
+	accountSvc := service.NewAccountService(customerRepo, accountRepo, currencyRepo, accountTypeRepo)
 
 	// Handlers
 	transferHandler := handler.NewTransferHandler(transferSvc)
@@ -95,6 +100,9 @@ func main() {
 		cfg.App.Version,
 		pool,
 	)
+	customerHandler := handler.NewCustomerHandler(customerSvc)
+	accountHandler := handler.NewAccountHandler(accountSvc)
+
 	//  Setup Router ───────────────────────────────────────────
 	r := chi.NewRouter()
 
@@ -110,12 +118,16 @@ func main() {
 
 	// API v1 group — all ledger routes will go here
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Use(httprate.LimitByIP(
-			cfg.App.RateLimitRequests,
-			time.Duration(cfg.App.RateLimitWindow)*time.Second,
-		))
+		r.Use(httprate.LimitByIP(cfg.App.RateLimitRequests, time.Duration(cfg.App.RateLimitWindow)*time.Second))
+
 		r.Post("/transfers", transferHandler.HandleTransfer)
 		r.Post("/refunds", refundHandler.HandleRefund)
+
+		// Customer routes
+		r.Post("/customers", customerHandler.HandleCreateCustomer)
+		r.Patch("/customers/{id}/kyc", customerHandler.HandleUpdateKYC)
+
+		r.Post("/accounts", accountHandler.HandleCreateAccount)
 
 	})
 

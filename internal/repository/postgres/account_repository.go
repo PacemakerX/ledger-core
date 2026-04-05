@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,7 +21,7 @@ type accountRepository struct {
 }
 
 func NewAccountRepository(pool *pgxpool.Pool) repository.AccountRepository {
-    return &accountRepository{pool: pool}
+	return &accountRepository{pool: pool}
 }
 
 func (r *accountRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Account, error) {
@@ -33,7 +34,7 @@ func (r *accountRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.
 		WHERE id = $1`
 
 	var account models.Account
-		err := r.pool.QueryRow(ctx, query, id).Scan(
+	err := r.pool.QueryRow(ctx, query, id).Scan(
 		&account.ID,
 		&account.AccountNumber,
 		&account.CustomerID,
@@ -71,8 +72,8 @@ func (r *accountRepository) GetByIDForUpdate(ctx context.Context, tx repository.
 	// In Go, when you have an interface, you only see the methods that interface declares. The concrete type underneath is hidden.
 	// Type assertion is you saying — "I know what's actually hiding under this interface, let me reach in and get it."
 
-		pgxTx := tx.(pgx.Tx) // this is type assertions  
-		err := pgxTx.QueryRow(ctx, query, id).Scan(
+	pgxTx := tx.(pgx.Tx) // this is type assertions
+	err := pgxTx.QueryRow(ctx, query, id).Scan(
 		&account.ID,
 		&account.AccountNumber,
 		&account.CustomerID,
@@ -96,48 +97,50 @@ func (r *accountRepository) GetByIDForUpdate(ctx context.Context, tx repository.
 }
 
 func (r *accountRepository) Create(ctx context.Context, account *models.Account) (*models.Account, error) {
-    
-	query:=`
-		INSERT INTO accounts ( account_number, customer_id, currency_id, type_id,country_id, is_active, daily_debit_limit, daily_credit_limit)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8 )
+
+	query := `
+		INSERT INTO accounts ( customer_id, currency_id, type_id,country_id, is_active, daily_debit_limit, daily_credit_limit)
+		VALUES ($1, $2, $3, $4, $5, $6, $7 )
 		RETURNING id, account_number, customer_id, currency_id, type_id,country_id, is_active, daily_debit_limit, daily_credit_limit, created_at, updated_at`
 
-		err := r.pool.QueryRow(ctx, query,
-			account.AccountNumber,
-			account.CustomerID,
-			account.CurrencyID,
-			account.TypeID,
-			account.CountryID,
-			account.IsActive,
-			account.DailyDebitLimit,
-			account.DailyCreditLimit,
-		).Scan(
-			&account.ID,
-			&account.AccountNumber,
-			&account.CustomerID,
-			&account.CurrencyID,
-			&account.TypeID,
-			&account.CountryID,
-			&account.IsActive,
-			&account.DailyDebitLimit,
-			&account.DailyCreditLimit,
-			&account.CreatedAt,
-			&account.UpdatedAt,
-		)
+	err := r.pool.QueryRow(ctx, query,
+		account.CustomerID,
+		account.CurrencyID,
+		account.TypeID,
+		account.CountryID,
+		account.IsActive,
+		account.DailyDebitLimit,
+		account.DailyCreditLimit,
+	).Scan(
+		&account.ID,
+		&account.AccountNumber,
+		&account.CustomerID,
+		&account.CurrencyID,
+		&account.TypeID,
+		&account.CountryID,
+		&account.IsActive,
+		&account.DailyDebitLimit,
+		&account.DailyCreditLimit,
+		&account.CreatedAt,
+		&account.UpdatedAt,
+	)
 	if err != nil {
-		return nil, fmt.Errorf("accountRepository.Create: %w", domainerrors.ErrDatabase)
+		if strings.Contains(err.Error(), "uq_customer_account") {
+			return nil, domainerrors.ErrAlreadyExists
+		}
+		return nil, fmt.Errorf("accountRepository.Create: %w", err)
 	}
-    return account, nil
+	return account, nil
 }
 
 func (r *accountRepository) UpdateBalance(ctx context.Context, tx repository.Tx, id uuid.UUID, newBalance int64) error {
- 	// TODO: revisit when balance caching strategy is decided
-    return nil
+	// TODO: revisit when balance caching strategy is decided
+	return nil
 }
 
 func (r *accountRepository) GetDailySpend(ctx context.Context, accountID uuid.UUID, date time.Time) (int64, error) {
-    
-	query:=`SELECT COALESCE(SUM(amount), 0)
+
+	query := `SELECT COALESCE(SUM(amount), 0)
 			FROM journal_entries
 			WHERE account_id = $1
 			AND entry_type = 'DEBIT'
