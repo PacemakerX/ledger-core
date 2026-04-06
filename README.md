@@ -1,9 +1,49 @@
 # ledger-core
 
 A production-grade double-entry accounting ledger built in Go and PostgreSQL.
-Handles concurrent transfers with full ACID guarantees, idempotency, and real-time observability.
+Handles concurrent transfers with full ACID guarantees, idempotency, partial refunds, and real-time observability.
 
----
+[![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://golang.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-336791?style=flat&logo=postgresql)](https://postgresql.org/)
+[![API Docs](https://img.shields.io/badge/Swagger-OpenAPI-85EA2D?style=flat&logo=swagger)](https://swagger.io/)
+[![Metrics](https://img.shields.io/badge/Prometheus-Metrics-E6522C?style=flat&logo=prometheus)](https://prometheus.io/)
+[![Dashboards](https://img.shields.io/badge/Grafana-Visualization-F46800?style=flat&logo=grafana)](https://grafana.com/)
+[![Error Tracking](https://img.shields.io/badge/Sentry-Monitoring-362D59?style=flat&logo=sentry)](https://sentry.io/)
+[![Load Testing](https://img.shields.io/badge/k6-Performance-7D64FF?style=flat&logo=k6)](https://k6.io/)
+[![Logging](https://img.shields.io/badge/Zap-Structured%20Logging-black?style=flat)]()
+[![Architecture](https://img.shields.io/badge/Architecture-Hexagonal%20%2B%20ACID-lightgrey?style=flat)]()
+[![System](https://img.shields.io/badge/System-Double--Entry%20Ledger-blue?style=flat)]()
+[![Domain](https://img.shields.io/badge/Domain-FinTech-0A66C2?style=flat)]()
+[![Idempotency](https://img.shields.io/badge/Idempotency-Exactly--Once-important?style=flat)]()
+[![Concurrency](https://img.shields.io/badge/Concurrency-Row%20Level%20Locks-critical?style=flat)]()
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+## What is ledger-core?
+
+ledger-core implements the same core accounting principles used by Razorpay, Stripe, and Zerodha — double-entry bookkeeping where every financial movement creates balanced journal entries that are mathematically verifiable.
+
+Every rupee that moves through the system is tracked across four journal entries. The ledger is always consistent. Bugs in financial logic are caught before they commit.
+
+
+## Architecture
+
+```bash
+HTTP Request
+     ↓
+Handler         — parses JSON, maps errors to HTTP status codes
+     ↓
+Service         — business logic, orchestrates repositories
+     ↓
+Interfaces      — ports (hexagonal architecture)
+     ↓
+Postgres        — adapters, all SQL lives here
+```
+
+**Hexagonal architecture** — the service layer has zero knowledge of PostgreSQL.
+Repositories can be swapped (MySQL, SQLite) without touching business logic.
+
+## Project Structure
+
 ```bash
 .
 ├── cmd
@@ -40,11 +80,14 @@ Handles concurrent transfers with full ACID guarantees, idempotency, and real-ti
 │   │   ├── customer.go
 │   │   ├── health.go
 │   │   ├── refund.go
+│   │   ├── statement.go
+│   │   ├── transaction.go
 │   │   ├── transfer.go
 │   │   └── validate.go
 │   ├── metrics
 │   │   └── metrics.go
 │   ├── middleware
+│   │   ├── logger.go
 │   │   └── metrics_middleware.go
 │   ├── models
 │   │   ├── account.go
@@ -75,6 +118,8 @@ Handles concurrent transfers with full ACID guarantees, idempotency, and real-ti
 │       ├── account.go
 │       ├── customer.go
 │       ├── refund.go
+│       ├── statement.go
+│       ├── transaction.go
 │       └── transfer.go
 ├── migrations
 │   ├── 000001_create_currencies.down.sql
@@ -122,29 +167,26 @@ Handles concurrent transfers with full ACID guarantees, idempotency, and real-ti
 ├── prometheus.yml
 └── README.md
 
-20 directories, 96 files
-```
+20 directories, 101 files
 
----
+```
 
 ## How a Transfer Works
 
-Every transfer executes these 14 steps atomically:
+Every transfer executes these steps atomically inside a single database transaction:
 
 1. Check idempotency key — return cached response if duplicate request
-2. Fetch sender account — verify it exists
-3. Fetch receiver account — verify it exists
-4. Check both accounts are active
-5. Fetch sender customer — verify KYC = `verified`
-6. Fetch receiver customer — verify KYC = `verified`
-7. Check sender account limits — DAILY, MONTHLY, YEARLY, TRANSACTION
-8. Verify sufficient balance (derived from journal entries via `SUM`, never stored)
-9. `BEGIN` transaction
-10. `defer tx.Rollback` — automatic rollback on any failure
-11. Create idempotency key (`PENDING`) inside the transaction
-12. `SELECT FOR UPDATE` both accounts (lower UUID first — deadlock prevention)
-13. Create transaction record (`PENDING`)
-14. `CreateBatch` — 4 journal entries:
+2. Fetch sender account — verify it exists and is active
+3. Fetch receiver account — verify it exists and is active
+4. Verify KYC status for both customers
+5. Check sender account limits — DAILY, MONTHLY, YEARLY, TRANSACTION
+6. Verify sufficient balance (derived from journal entries via `SUM`, never stored as a column)
+7. `BEGIN` transaction
+8. `defer tx.Rollback` — automatic rollback on any failure
+9. Create idempotency key (`PENDING`) inside the transaction
+10. `SELECT FOR UPDATE` both accounts (lower UUID first — deadlock prevention)
+11. Create transaction record (`PENDING`)
+12. `CreateBatch` — 4 journal entries:
 
 | Account        | Entry  | Effect            |
 | -------------- | ------ | ----------------- |
@@ -153,15 +195,14 @@ Every transfer executes these 14 steps atomically:
 | Platform Float | CREDIT | platform releases |
 | Receiver       | DEBIT  | money arriving    |
 
-15. Verify `SUM(debits) - SUM(credits) = 0` — mathematically enforced
-16. Update transaction → `COMPLETED`
-17. Update limit usage
-18. Set idempotency response → `COMPLETED`
-19. `COMMIT`
+13. Verify `SUM(debits) - SUM(credits) = 0` — mathematically enforced before every commit
+14. Update transaction → `COMPLETED`
+15. Update limit usage
+16. Set idempotency response → `COMPLETED`
+17. `COMMIT`
 
-If any step fails, the entire transaction rolls back automatically.
+If any step fails, the entire transaction rolls back automatically including the idempotency key.
 
----
 
 ## Key Design Decisions
 
@@ -185,7 +226,7 @@ If the transaction rolls back, the idempotency key rolls back with it.
 This prevents a failed transfer from being treated as already-processed on retry.
 
 **Why UUIDv7 over v4?**
-UUIDv7 is time-ordered — sequential inserts cause less B-tree fragmentation in PostgreSQL indexes.
+UUIDv7 is time-ordered — sequential inserts cause less B-tree fragmentation in PostgreSQL indexes. Also enables cursor-based pagination without an extra timestamp column.
 
 **Why `BIGINT` for money?**
 Floating point arithmetic is non-deterministic. `BIGINT` in smallest currency unit (paise for INR, cents for USD) is exact.
@@ -194,13 +235,108 @@ Floating point arithmetic is non-deterministic. `BIGINT` in smallest currency un
 Financial ledgers must be auditable. No `UPDATE` or `DELETE` ever touches `journal_entries`.
 Corrections are made via new entries (refunds, adjustments), never by editing history.
 
+**Why `original_transaction_id` on refunds?**
+Partial refunds require tracking cumulative refunded amount. Linking every refund transaction back to its original transfer via FK enables a single query to prevent over-refunding across multiple partial refund requests.
+
+
+
+## API Endpoints
+
+Full interactive documentation available at `http://localhost:8080/swagger/index.html`
+
+| Method  | Endpoint                            | Description                                   |
+| ------- | ----------------------------------- | --------------------------------------------- |
+| `POST`  | `/api/v1/customers`                 | Register a new customer                       |
+| `PATCH` | `/api/v1/customers/:id/kyc`         | Update KYC status                             |
+| `POST`  | `/api/v1/accounts`                  | Open account for verified customer            |
+| `POST`  | `/api/v1/transfers`                 | Transfer funds between accounts               |
+| `POST`  | `/api/v1/refunds`                   | Refund a completed transfer (partial or full) |
+| `GET`   | `/api/v1/accounts/:id/transactions` | Paginated transaction history                 |
+| `GET`   | `/api/v1/accounts/:id/statement`    | Download PDF account statement                |
+| `GET`   | `/health`                           | Service and database health check             |
+| `GET`   | `/metrics`                          | Prometheus metrics                            |
+| `GET`   | `/swagger/*`                        | Swagger UI                                    |
+
+### Transfer Request
+
+```json
+{
+  "from_account_id": "uuid",
+  "to_account_id": "uuid",
+  "amount": 100000,
+  "currency": "INR",
+  "idempotency_key": "unique-key-per-request"
+}
+```
+
+### Refund Request (partial supported)
+
+```json
+{
+  "transaction_id": "uuid-of-original-transfer",
+  "amount": 50000,
+  "idempotency_key": "unique-key-per-request"
+}
+```
+
+### Error Response Format
+
+All errors return structured JSON with domain-specific error codes:
+
+```json
+{
+  "code": "LEDGER_002_INSUFFICIENT_BALANCE",
+  "message": "account does not have sufficient balance",
+  "request_id": "abc-123"
+}
+```
+
+| Code                              | Status | Meaning                 |
+| --------------------------------- | ------ | ----------------------- |
+| `LEDGER_001_NOT_FOUND`            | 404    | Resource not found      |
+| `LEDGER_002_INSUFFICIENT_BALANCE` | 422    | Not enough funds        |
+| `LEDGER_003_KYC_NOT_VERIFIED`     | 403    | Customer KYC incomplete |
+| `LEDGER_004_ACCOUNT_INACTIVE`     | 422    | Account is inactive     |
+| `LEDGER_005_DAILY_LIMIT_EXCEEDED` | 422    | Daily limit breached    |
+| `LEDGER_500_INTERNAL_ERROR`       | 500    | Internal server error   |
+
+
+## Performance
+
+Load tested with k6 on a single development machine (Go app + PostgreSQL + Prometheus + Grafana running locally).
+
+![k6 Load Test](docs/images/load_test.png)
+
+| Scenario              | VUs | TPS | p50   | p95   | p99   | Errors |
+| --------------------- | --- | --- | ----- | ----- | ----- | ------ |
+| Baseline              | 1   | 95  | 10ms  | 12ms  | 14ms  | 0%     |
+| Realistic concurrency | 20  | 332 | 53ms  | 107ms | 147ms | 0%     |
+| Stress test           | 200 | 526 | 143ms | 459ms | 579ms | 0%     |
+
+**94,660 transfers completed under stress test with zero errors or data corruption.**
+
+Latency increases under high concurrency because `SELECT FOR UPDATE` serializes writes to the same account pair by design. This is correct behavior for a financial system — concurrent writes to the same account must be ordered. In production, load is distributed across millions of account pairs, eliminating this bottleneck.
+
+
+## Observability
+
+![Grafana Dashboard](docs/images/grafana.jpg)
+
+| Tool                | Purpose                                                                                   |
+| ------------------- | ----------------------------------------------------------------------------------------- |
+| **Prometheus**      | Scrapes `/metrics` every 15 seconds — request count, latency histograms                   |
+| **Grafana**         | 7-panel dashboard — request rate, p50/p95/p99 latency, transfer count, error rate         |
+| **Sentry**          | Error tracking — captures exceptions with full stack traces and request context           |
+| **Zap**             | Structured JSON request logging — method, path, status, latency, request ID on every line |
+| **Health endpoint** | `GET /health` returns db connectivity, uptime, version, environment                       |
+
 ---
 
 ## Database Schema
 
-14 migrations, all append-only:
+17 migrations, all append-only:
 
-```bash
+```
 001 currencies               — INR, USD, SGD (50 seeded)
 002 exchange_rates           — NUMERIC(20,8), daily rates
 003 account_types            — asset/liability/equity/revenue/expense
@@ -213,37 +349,12 @@ Corrections are made via new entries (refunds, adjustments), never by editing hi
 010 audit_logs               — compliance trail
 011 account_limits           — DAILY/MONTHLY/YEARLY/TRANSACTION limits per account
 012 indexes                  — composite indexes for query optimization
-013 seed_platform_accounts  — platform float/cash/revenue accounts + test data
-014 fix_idempotency_keys    — corrected column types (append-only migration pattern)
+013 seed_platform_accounts   — platform float/cash/revenue accounts + test data
+014 fix_idempotency_keys     — corrected column types (append-only migration pattern)
+015 add_account_ids          — from_account_id, to_account_id on transactions
+016 add_amount               — amount, currency_id on transactions
+017 original_transaction_id  — FK for partial refund tracking
 ```
-
----
-
-## Performance
-
-Load tested with k6 on a single development machine (Go app + PostgreSQL + Prometheus + Grafana running locally).
-![k6 Load Test](docs/images/load_test.png)
-| Scenario              | VUs | TPS | p50   | p95   | p99   | Errors |
-| --------------------- | --- | --- | ----- | ----- | ----- | ------ |
-| Baseline              | 1   | 95  | 10ms  | 12ms  | 14ms  | 0%     |
-| Realistic concurrency | 20  | 332 | 53ms  | 107ms | 147ms | 0%     |
-| Stress test           | 200 | 526 | 143ms | 459ms | 579ms | 0%     |
-
-**94,660 transfers completed under stress test with zero errors or data corruption.**
-
-Latency increases under high concurrency because `SELECT FOR UPDATE` serializes writes
-to the same account pair by design. This is correct behavior for a financial system —
-concurrent writes to the same account must be ordered. In production, load is distributed
-across millions of account pairs, eliminating this bottleneck.
-
----
-
-## Observability
-![Grafana Dashboard](docs/images/grafana.jpg)
-- **Prometheus** — scrapes `/metrics` every 15 seconds
-- **Grafana** — 7-panel dashboard: request rate, p50/p95/p99 latency, transfer count, error rate, total requests
-- **Structured logging** — zap with request IDs on every log line
-- **Health endpoint** — `GET /health`
 
 ---
 
@@ -256,46 +367,14 @@ across millions of account pairs, eliminating this bottleneck.
 | Router           | Chi v5                 |
 | Connection Pool  | pgx/v5 + pgxpool       |
 | Migrations       | golang-migrate         |
-| Logging          | zap                    |
+| Logging          | Zap (structured)       |
 | Metrics          | Prometheus             |
 | Dashboards       | Grafana                |
+| Error Tracking   | Sentry                 |
+| API Docs         | Swagger UI (swaggo)    |
 | Load Testing     | k6                     |
 | Containerization | Docker, Docker Compose |
-
----
-
-## API
-
-### POST /api/v1/transfers
-
-```json
-{
-  "from_account_id": "uuid",
-  "to_account_id": "uuid",
-  "amount": 1000,
-  "currency": "INR",
-  "idempotency_key": "unique-key-per-request"
-}
-```
-
-**Response 200:**
-
-```json
-{
-  "transaction_id": "uuid",
-  "status": "COMPLETED",
-  "created_at": "2026-04-02T00:00:00Z"
-}
-```
-
-**Error responses:**
-| Status | Reason |
-|--------|--------|
-| 400 | Invalid request body |
-| 404 | Account not found |
-| 403 | KYC not verified |
-| 422 | Insufficient balance, account inactive, or limit exceeded |
-| 500 | Internal server error |
+| Hot Reload       | Air                    |
 
 ---
 
@@ -306,6 +385,7 @@ across millions of account pairs, eliminating this bottleneck.
 - Go 1.21+
 - Docker and Docker Compose
 - [golang-migrate CLI](https://github.com/golang-migrate/migrate)
+- [k6](https://k6.io/) (optional, for load testing)
 
 ### Run Locally
 
@@ -324,7 +404,10 @@ docker-compose up postgres -d
 # Run database migrations
 make migrate-up
 
-# Start the server
+# Start the server (with hot reload)
+air
+
+# Or without hot reload
 go run cmd/server/main.go
 ```
 
@@ -336,25 +419,25 @@ Server runs at `http://localhost:8080`
 docker-compose up -d
 ```
 
-| Service    | URL                   |
-| ---------- | --------------------- |
-| API        | http://localhost:8080 |
-| Prometheus | http://localhost:9090 |
-| Grafana    | http://localhost:3000 |
+| Service    | URL                                      |
+| ---------- | ---------------------------------------- |
+| API        | http://localhost:8080                    |
+| Swagger UI | http://localhost:8080/swagger/index.html |
+| Prometheus | http://localhost:9090                    |
+| Grafana    | http://localhost:3000                    |
 
 ### Run Load Tests
 
 ```bash
-k6 run load_test.js
+k6 run scripts/loadtest/k6.js
 ```
 
----
 
 ## Architecture Decision Records
 
-8 ADRs documented in `docs/adr/`:
+9 ADRs documented in `docs/adr/`:
 
-```bash
+```
 001 — Why Go
 002 — Why PostgreSQL (MVCC, ACID, WAL, SELECT FOR UPDATE)
 003 — Why pgx over database/sql
@@ -363,9 +446,8 @@ k6 run load_test.js
 006 — Why UUIDv7 (time-ordered, less index fragmentation)
 007 — Why golang-migrate over GORM AutoMigrate
 008 — Why Double-Entry Accounting
+009 — Why original transaction ID on refunds
 ```
-
----
 
 ## License
 
