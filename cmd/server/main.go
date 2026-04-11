@@ -113,7 +113,7 @@ func main() {
 		cfg,
 	)
 	customerSvc := service.NewCustomerService(customerRepo, countryRepo,auditLogRepo)
-	accountSvc := service.NewAccountService(customerRepo, accountRepo, currencyRepo, accountTypeRepo)
+	accountSvc := service.NewAccountService(customerRepo, accountRepo, currencyRepo, accountTypeRepo,auditLogRepo)
 	transactionSvc := service.NewTransactionService(accountRepo, transactionRepo)
 	statementSvc := service.NewStatementService(accountRepo, transactionRepo, journalRepo)
 
