@@ -10,10 +10,14 @@ import (
 	"github.com/joho/godotenv"
 )
 
+type RedisConfig struct {
+	URL string
+}
 type Config struct {
 	App                      AppConfig
 	Database                 DatabaseConfig
 	Log                      LogConfig
+	Redis                    RedisConfig
 	PlatformFloatAccountID   uuid.UUID
 	PlatformCashAccountID    uuid.UUID
 	PlatformRevenueAccountID uuid.UUID
@@ -89,7 +93,7 @@ func Load() (*Config, error) {
 			Version:           getEnv("APP_VERSION", "1.5.0"),
 			RateLimitRequests: getEnvInt("RATE_LIMIT_REQUESTS", 1000),
 			RateLimitWindow:   getEnvInt("RATE_LIMIT_WINDOW_SECONDS", 60),
-			SentryDSN: getEnv("SENTRY_DSN", ""),
+			SentryDSN:         getEnv("SENTRY_DSN", ""),
 		},
 		Database: DatabaseConfig{
 			Host:         getEnv("DB_HOST", "localhost"),
@@ -108,6 +112,9 @@ func Load() (*Config, error) {
 		PlatformFloatAccountID:   platformFloatAccountID,
 		PlatformCashAccountID:    platformCashAccountID,
 		PlatformRevenueAccountID: platformRevenueAccountID,
+		Redis: RedisConfig{
+			URL: getEnv("REDIS_URL", "redis://localhost:6379"),
+		},
 	}, nil
 }
 

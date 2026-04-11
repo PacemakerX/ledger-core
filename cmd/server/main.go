@@ -11,10 +11,12 @@ import (
 
 	"github.com/PacemakerX/ledger-core/config"
 	_ "github.com/PacemakerX/ledger-core/docs"
+	"github.com/PacemakerX/ledger-core/internal/cache"
 	"github.com/PacemakerX/ledger-core/internal/db"
 	"github.com/PacemakerX/ledger-core/internal/handler"
 	"github.com/PacemakerX/ledger-core/internal/middleware"
 	"github.com/PacemakerX/ledger-core/internal/repository/postgres"
+	"github.com/PacemakerX/ledger-core/internal/repository/redis"
 	"github.com/PacemakerX/ledger-core/internal/service"
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
@@ -77,6 +79,14 @@ func main() {
 	}
 
 	// Repositories
+	// Redis
+	redisClient, err := cache.NewRedisClient(context.Background(), &cfg.Redis)
+	if err != nil {
+		logger.Warn("redis unavailable, falling back to postgres only", zap.Error(err))
+		redisClient = nil
+	}
+
+	// Repositories
 	accountRepo := postgres.NewAccountRepository(pool)
 	transactionRepo := postgres.NewTransactionRepository(pool)
 	journalRepo := postgres.NewJournalEntryRepository(pool)
@@ -88,6 +98,7 @@ func main() {
 	currencyRepo := postgres.NewCurrencyRepository(pool)
 	accountTypeRepo := postgres.NewAccountTypeRepository(pool)
 	auditLogRepo := postgres.NewAuditLogRepository(pool)
+	idempotencyCacheRepo := redis.NewIdempotencyCache(redisClient)
 
 	// Services
 	transferSvc := service.NewTransferService(
@@ -99,6 +110,7 @@ func main() {
 		customerRepo,
 		accountLimitRepo,
 		auditLogRepo,
+		idempotencyCacheRepo,
 		cfg,
 	)
 	refundSvc := service.NewRefundService(
@@ -110,10 +122,11 @@ func main() {
 		customerRepo,
 		accountLimitRepo,
 		auditLogRepo,
+		idempotencyCacheRepo,
 		cfg,
 	)
-	customerSvc := service.NewCustomerService(customerRepo, countryRepo,auditLogRepo)
-	accountSvc := service.NewAccountService(customerRepo, accountRepo, currencyRepo, accountTypeRepo,auditLogRepo)
+	customerSvc := service.NewCustomerService(customerRepo, countryRepo, auditLogRepo)
+	accountSvc := service.NewAccountService(customerRepo, accountRepo, currencyRepo, accountTypeRepo, auditLogRepo)
 	transactionSvc := service.NewTransactionService(accountRepo, transactionRepo)
 	statementSvc := service.NewStatementService(accountRepo, transactionRepo, journalRepo)
 

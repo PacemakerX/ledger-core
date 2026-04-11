@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/PacemakerX/ledger-core/config"
+	"github.com/PacemakerX/ledger-core/internal/cache"
 	domainerrors "github.com/PacemakerX/ledger-core/internal/errors"
 	"github.com/PacemakerX/ledger-core/internal/models"
 	"github.com/PacemakerX/ledger-core/internal/repository"
@@ -26,15 +27,16 @@ type RefundResponse struct {
 }
 
 type refundService struct {
-	txManager    repository.TxManager
-	account      repository.AccountRepository
-	transaction  repository.TransactionRepository
-	journal      repository.JournalEntryRepository
-	idempotency  repository.IdempotencyRepository
-	customer     repository.CustomerRepository
-	accountLimit repository.AccountLimitRepository
-	auditLog     repository.AuditLogRepository
-	cfg          *config.Config
+	txManager        repository.TxManager
+	account          repository.AccountRepository
+	transaction      repository.TransactionRepository
+	journal          repository.JournalEntryRepository
+	idempotency      repository.IdempotencyRepository
+	customer         repository.CustomerRepository
+	accountLimit     repository.AccountLimitRepository
+	auditLog         repository.AuditLogRepository
+	idempotencyCache cache.IdempotencyCache
+	cfg              *config.Config
 }
 
 func NewRefundService(
@@ -46,28 +48,35 @@ func NewRefundService(
 	customer repository.CustomerRepository,
 	accountLimit repository.AccountLimitRepository,
 	auditLog repository.AuditLogRepository,
+	idempotencyCache cache.IdempotencyCache,
 	cfg *config.Config,
 ) *refundService {
 	return &refundService{
-		txManager:    txManager,
-		account:      account,
-		transaction:  transaction,
-		journal:      journal,
-		idempotency:  idempotency,
-		customer:     customer,
-		accountLimit: accountLimit,
-		auditLog:     auditLog,
-		cfg:          cfg,
+		txManager:        txManager,
+		account:          account,
+		transaction:      transaction,
+		journal:          journal,
+		idempotency:      idempotency,
+		customer:         customer,
+		accountLimit:     accountLimit,
+		auditLog:         auditLog,
+		idempotencyCache: idempotencyCache,
+		cfg:              cfg,
 	}
 }
 
 func (s *refundService) Refund(ctx context.Context, req RefundRequest) (*RefundResponse, error) {
 
-	// Step 1 — check idempotency key
-	existing, err := s.idempotency.Get(ctx, req.IdempotencyKey)
+	// Step 1 — check idempotency key (Redis first, Postgres fallback)
+	existing, err := s.idempotencyCache.Get(ctx, req.IdempotencyKey)
 	if err != nil && !errors.Is(err, domainerrors.ErrNotFound) {
-		return nil, fmt.Errorf("refund: checking idempotency: %w", err)
+		// Redis down — fall through to Postgres silently
+		existing, err = s.idempotency.Get(ctx, req.IdempotencyKey)
+		if err != nil && !errors.Is(err, domainerrors.ErrNotFound) {
+			return nil, fmt.Errorf("refund: checking idempotency: %w", err)
+		}
 	}
+
 	if existing != nil {
 		txID, err := uuid.Parse(existing.ResponseBody)
 		if err != nil {
@@ -289,6 +298,14 @@ func (s *refundService) Refund(ctx context.Context, req RefundRequest) (*RefundR
 	if err != nil {
 		return nil, fmt.Errorf("refund: committing transaction: %w", err)
 	}
+
+	// Populate Redis cache after successful commit
+	s.idempotencyCache.Set(ctx, &models.IdempotencyKey{
+		Key:            req.IdempotencyKey,
+		ResponseStatus: "COMPLETED",
+		ResponseBody:   createdTx.ID.String(),
+		CreatedAt:      createdTx.CreatedAt,
+	})
 
 	// Fire-and-forget audit log — after commit, outside transaction
 	s.auditLog.Create(ctx, &models.AuditLog{

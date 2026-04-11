@@ -25,6 +25,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+        redis:
+      condition: service_healthy
     env_file:
       - .env.docker
   prometheus:
@@ -44,6 +46,17 @@ services:
       - prometheus
     volumes:
       - grafana_data:/var/lib/grafana
+
+  redis:
+    image: redis:7-alpine
+    container_name: ledger-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:
