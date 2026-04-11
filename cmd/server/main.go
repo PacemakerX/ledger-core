@@ -87,6 +87,7 @@ func main() {
 	countryRepo := postgres.NewCountryRepository(pool)
 	currencyRepo := postgres.NewCurrencyRepository(pool)
 	accountTypeRepo := postgres.NewAccountTypeRepository(pool)
+	auditLogRepo := postgres.NewAuditLogRepository(pool)
 
 	// Services
 	transferSvc := service.NewTransferService(
@@ -97,6 +98,7 @@ func main() {
 		idempotencyRepo,
 		customerRepo,
 		accountLimitRepo,
+		auditLogRepo,
 		cfg,
 	)
 	refundSvc := service.NewRefundService(
@@ -107,9 +109,10 @@ func main() {
 		idempotencyRepo,
 		customerRepo,
 		accountLimitRepo,
+		auditLogRepo,
 		cfg,
 	)
-	customerSvc := service.NewCustomerService(customerRepo, countryRepo)
+	customerSvc := service.NewCustomerService(customerRepo, countryRepo,auditLogRepo)
 	accountSvc := service.NewAccountService(customerRepo, accountRepo, currencyRepo, accountTypeRepo)
 	transactionSvc := service.NewTransactionService(accountRepo, transactionRepo)
 	statementSvc := service.NewStatementService(accountRepo, transactionRepo, journalRepo)

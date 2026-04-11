@@ -141,3 +141,7 @@ type CurrencyRepository interface {
 type AccountTypeRepository interface {
 	GetByName(ctx context.Context, name string) (*models.AccountType, error)
 }
+
+type AuditLogRepository interface {
+	Create(ctx context.Context, log *models.AuditLog) error
+}

@@ -37,6 +37,7 @@ type transferService struct {
 	idempotency  repository.IdempotencyRepository
 	customer     repository.CustomerRepository
 	accountLimit repository.AccountLimitRepository
+	auditLog     repository.AuditLogRepository
 	cfg          *config.Config
 }
 
@@ -48,6 +49,7 @@ func NewTransferService(
 	idempotency repository.IdempotencyRepository,
 	customer repository.CustomerRepository,
 	accountLimit repository.AccountLimitRepository,
+	auditLog repository.AuditLogRepository,
 	cfg *config.Config,
 ) *transferService {
 	return &transferService{
@@ -58,6 +60,7 @@ func NewTransferService(
 		idempotency:  idempotency,
 		customer:     customer,
 		accountLimit: accountLimit,
+		auditLog:     auditLog,
 		cfg:          cfg,
 	}
 }
@@ -388,6 +391,16 @@ func (s *transferService) Transfer(ctx context.Context, req TransferRequest) (*T
 	if err != nil {
 		return nil, fmt.Errorf("transfer: committing transaction: %w", err)
 	}
+	// Fire-and-forget audit log — after commit, outside transaction
+	s.auditLog.Create(ctx, &models.AuditLog{
+		ID:         uuid.New(),
+		EntityType: "transaction",
+		EntityID:   createdTx.ID,
+		Action:     "TRANSFER_COMPLETED",
+		ActorID:    req.InitiatedBy,
+		ActorType:  "customer",
+		CreatedAt:  time.Now(),
+	})
 
 	return &TransferResponse{
 		TransactionID: createdTx.ID,

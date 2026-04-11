@@ -33,6 +33,7 @@ type refundService struct {
 	idempotency  repository.IdempotencyRepository
 	customer     repository.CustomerRepository
 	accountLimit repository.AccountLimitRepository
+	auditLog     repository.AuditLogRepository
 	cfg          *config.Config
 }
 
@@ -44,6 +45,7 @@ func NewRefundService(
 	idempotency repository.IdempotencyRepository,
 	customer repository.CustomerRepository,
 	accountLimit repository.AccountLimitRepository,
+	auditLog repository.AuditLogRepository,
 	cfg *config.Config,
 ) *refundService {
 	return &refundService{
@@ -54,6 +56,7 @@ func NewRefundService(
 		idempotency:  idempotency,
 		customer:     customer,
 		accountLimit: accountLimit,
+		auditLog:     auditLog,
 		cfg:          cfg,
 	}
 }
@@ -286,6 +289,17 @@ func (s *refundService) Refund(ctx context.Context, req RefundRequest) (*RefundR
 	if err != nil {
 		return nil, fmt.Errorf("refund: committing transaction: %w", err)
 	}
+
+	// Fire-and-forget audit log — after commit, outside transaction
+	s.auditLog.Create(ctx, &models.AuditLog{
+		ID:         uuid.New(),
+		EntityType: "transaction",
+		EntityID:   createdTx.ID,
+		Action:     "REFUND_COMPLETED",
+		ActorID:    *original.FromAccountID,
+		ActorType:  "customer",
+		CreatedAt:  time.Now(),
+	})
 
 	return &RefundResponse{
 		TransactionID: createdTx.ID,

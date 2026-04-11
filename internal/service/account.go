@@ -30,6 +30,7 @@ type accountService struct {
 	account     repository.AccountRepository
 	currency    repository.CurrencyRepository
 	accountType repository.AccountTypeRepository
+	auditLog    repository.AuditLogRepository
 }
 
 func NewAccountService(
@@ -37,12 +38,14 @@ func NewAccountService(
 	account repository.AccountRepository,
 	currency repository.CurrencyRepository,
 	accountType repository.AccountTypeRepository,
+	auditLog repository.AuditLogRepository,
 ) *accountService {
 	return &accountService{
 		customer:    customer,
 		account:     account,
 		currency:    currency,
 		accountType: accountType,
+		auditLog:    auditLog,
 	}
 }
 
@@ -85,6 +88,14 @@ func (s *accountService) CreateAccount(ctx context.Context, req CreateAccountReq
 		return nil, fmt.Errorf("accountService.CreateAccount: %w", err)
 	}
 
+	s.auditLog.Create(ctx, &models.AuditLog{
+		ID:         uuid.New(),
+		EntityType: "account",
+		EntityID:   created.ID,
+		Action:     "ACCOUNT_CREATED",
+		ActorID:    req.CustomerID,
+		ActorType:  "customer",
+	})
 	return &CreateAccountResponse{
 		AccountID:     created.ID,
 		AccountNumber: created.AccountNumber,

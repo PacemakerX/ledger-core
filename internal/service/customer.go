@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+
 	"github.com/PacemakerX/ledger-core/internal/models"
 	"github.com/PacemakerX/ledger-core/internal/repository"
 	"github.com/google/uuid"
@@ -31,15 +32,18 @@ type UpdateKYCRequest struct {
 type customerService struct {
 	customer repository.CustomerRepository
 	country  repository.CountryRepository
+	auditLog repository.AuditLogRepository
 }
 
 func NewCustomerService(
 	customer repository.CustomerRepository,
 	country repository.CountryRepository,
+	auditLog repository.AuditLogRepository,
 ) *customerService {
 	return &customerService{
 		customer: customer,
 		country:  country,
+		auditLog: auditLog,
 	}
 }
 
@@ -69,6 +73,14 @@ func (s *customerService) CreateCustomer(ctx context.Context, req CreateCustomer
 		return nil, fmt.Errorf("customerService.CreateCustomer: %w", err)
 	}
 
+	s.auditLog.Create(ctx, &models.AuditLog{
+		ID:         uuid.New(),
+		EntityType: "customer",
+		EntityID:   created.ID,
+		Action:     "CUSTOMER_CREATED",
+		ActorID:    created.ID, // customer is the actor on self-creation
+		ActorType:  "customer",
+	})
 	return &CreateCustomerResponse{
 		CustomerID: created.ID,
 		Status:     "created",
@@ -100,6 +112,15 @@ func (s *customerService) UpdateKYC(ctx context.Context, id uuid.UUID, req Updat
 	if err != nil {
 		return fmt.Errorf("customerService.UpdateKYC: %w", err)
 	}
+
+	s.auditLog.Create(ctx, &models.AuditLog{
+		ID:         uuid.New(),
+		EntityType: "customer",
+		EntityID:   id,
+		Action:     "KYC_UPDATED",
+		ActorID:    id, // or an admin UUID if you have that concept
+		ActorType:  "admin",
+	})
 
 	return nil
 }
